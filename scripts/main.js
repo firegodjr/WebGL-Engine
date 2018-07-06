@@ -34,10 +34,26 @@ function main(){
   
     drawScene(gl, programInfo, buffers, texture, deltaTime);
     squareRotation[0] += deltaTime;
+    squareRotation[1] += deltaTime/.7;
     requestAnimationFrame(render);
   }
 
   requestAnimationFrame(render);
+}
+
+function initBuffers(gl){
+  
+  const vertices = modelCache["Cube"].vertices;
+  const vertexBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+  const indices = modelCache["Cube"].indices;
+  const indexBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+
+  return { vertices: vertexBuffer, indices: indexBuffer,};
 }
 
 function drawScene(gl, programInfo, buffers, texture, deltaTime){
@@ -69,20 +85,21 @@ function drawScene(gl, programInfo, buffers, texture, deltaTime){
   mat4.rotateX(modelViewMatrix, modelViewMatrix, squareRotation[0]);
   mat4.rotateY(modelViewMatrix, modelViewMatrix, squareRotation[1]);
 
+  const GL_FLOAT_BYTES = 4;
   // Tell Webgl how to pull out the positions from the position buffer into the
   // vertexposition attribute
   {
-    // Pull out 3 values per iteration
+    // Pull out 8 values per iteration
     const numComponents = 3;
     // The data in the buffer is 32-bit floats
     const type = gl.FLOAT;
     // Don't normalize
     const normalize = false;
     // how many bytes to get from one set of values to the next (0=use type and numComponents above)
-    const stride = 0;
+    const stride = GL_FLOAT_BYTES * 5;
     // how many bytes inside the buffer to start from
     const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.vertexBuffer);
     gl.vertexAttribPointer(
       programInfo.attribLocations.vertexPosition,
       numComponents,
@@ -95,22 +112,22 @@ function drawScene(gl, programInfo, buffers, texture, deltaTime){
 
   // Tell Webgl how to pull out the texCoords from the texCoord buffer into the
   // textureCoord attribute
-  // {
-  //   const numComponents = 2;
-  //   const type = gl.FLOAT;
-  //   const normalize = false;
-  //   const stride = 0;
-  //   const offset = 0;
-  //   gl.bindBuffer(gl.ARRAY_BUFFER, buffers.textureCoord);
-  //   gl.vertexAttribPointer(
-  //     programInfo.attribLocations.textureCoord,
-  //     numComponents,
-  //     type,
-  //     normalize,
-  //     stride,
-  //     offset);
-  //   gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
-  // }
+  {
+    const numComponents = 2;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = GL_FLOAT_BYTES * 5;
+    const offset = GL_FLOAT_BYTES * 3;
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.textureCoord);
+    gl.vertexAttribPointer(
+      programInfo.attribLocations.textureCoord,
+      numComponents,
+      type,
+      normalize,
+      stride,
+      offset);
+    gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+  }
 
   //Tell WebGL to use our program when drawing
   gl.useProgram(programInfo.program);
@@ -137,26 +154,6 @@ function drawScene(gl, programInfo, buffers, texture, deltaTime){
     const type = gl.UNSIGNED_SHORT;
     gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
   }
-}
-
-function initBuffers(gl){
-  
-  const positions = modelCache["Cube"].vertices;
-  const positionBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
-
-  const textureCoordinates = modelCache["Cube"].texCoordIndices;
-  const textureCoordBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoordinates), gl.STATIC_DRAW);
-
-  const indices = modelCache["Cube"].vertexIndices;
-  const indexBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
-
-  return { position: positionBuffer, textureCoord: textureCoordBuffer, indices: indexBuffer,};
 }
 
 // Loads a texture from the 'textures' folder
@@ -249,10 +246,12 @@ function loadOBJToModelCache(raw)
 function loadOBJ(raw)
 {
   var name = "";
-  var vertices = [];
-  var normals = [];
-  var indices = [[],[],[]];
+
+  // Contains individual vertex components
+  var positions = [];
   var texCoords = [];
+  var normals = [];
+  var indexedFaces = [];
 
   var lines = raw.split("\n");
   for(var i = 0; i < lines.length; ++i)
@@ -266,51 +265,79 @@ function loadOBJ(raw)
         name = tokens.slice(1).join(' ');
         break;
 
-      // Vertex
+      // Vertex Position
       case 'v':
+        var pos = [];
         tokens.slice(1).forEach(value => {
-          vertices.push(parseFloat(value));
+          pos.push(parseFloat(value));
         });
+        positions.push(pos);
         break;
 
       // Vertex Normal
       case 'vn':
+        var n = [];
         tokens.slice(1).forEach(value => {
-          normals.push(parseFloat(value));
+          n.push(parseFloat(value));
         });
+        normals.push(n);
         break;
-      
+
+      // Vertex Texture Coords
+      case 'vt':
+        var coords = [];
+        tokens.slice(1).forEach(value =>{
+          coords.push(parseFloat(value));
+        });
+        texCoords.push(coords);
+        break;
+
       // Face
       case 'f':
         var faceVertices = tokens.slice(1)
         if(faceVertices.length == 3)
         {
-          faceVertices.forEach(value => {
+          faceVertices.forEach(value => 
+          {
             var vertexAttribs = value.split("/");
-            for(var j = 0; j < 3; ++j)
-            {
-              if(vertexAttribs[j] != '')
-              {
-                indices[j].push(parseInt(vertexAttribs[j])-1);
-              }
-            }
+            vertexAttribsParsed = [];
+            vertexAttribs.forEach(value => { 
+              // Subtract 1 because WebGL indices are 0-based while objs are 1-based
+              vertexAttribsParsed.push(parseInt(value)-1)
+            });
+            indexedFaces.push(vertexAttribsParsed);
           });
         }
         else
         {
           console.warn("Model '" + name + "' could not be loaded because it contains non-triangular faces.");
+          //TODO: Triangulate faces automatically
         }
         break;
     }
   }
 
+  // Contains the positions, texCoords, and normals all together
+  var fullVertices = [];
+  var indexDict = [];
+  var combinedIndex = 0;
+  var combinedIndices = [];
+  indexedFaces.forEach(face => {
+    if(toString(...face) in indexDict)
+    {
+      combinedIndex = indexDict[toString(...face)];
+    }
+    else
+    {
+      indexDict[toString(...face)] = combinedIndex++;
+      fullVertices.push(...positions[face[0]], ...texCoords[face[1]], ...normals[face[2]]);
+    }
+    combinedIndices.push(indexDict[toString(...face)]);
+  });
+
   return {
     name: name,
-    vertices: vertices,
-    normals: normals,
-    texCoords: texCoords,
-    vertexIndices: indices[0],
-    texCoordIndices: indices[1],
-    normalIndices: indices[2],
+    vertices: fullVertices,
+    indices: combinedIndices,
   }
 }
