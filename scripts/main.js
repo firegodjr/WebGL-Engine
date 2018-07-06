@@ -1,5 +1,6 @@
 const CLEAR_COLOR = vec4.fromValues(0.3, 0.3, 0.9, 1.0);
 var squareRotation = [0.0, 0.0, 0.0];
+var modelCache = [];
 main();
 
 // - - - - - - - - - - - - - - - -
@@ -12,9 +13,13 @@ function main(){
     alert("Unable to initialize WebGL. Your browser or machine may not support it.");
     return;
   }
+
+  //Load a model into memory
+  requestContent("models/cube.obj", loadOBJToModelCache);
+
   const shaderProgram = initDefaultShaderProgram(gl);
   const programInfo = getProgramInfo(gl, shaderProgram);
-  const buffers = initBuffers(gl);
+  const buffers = null;
   const texture = loadTexture(gl, "firefox.png");
 
   attachInputListeners(gl);
@@ -36,13 +41,17 @@ function main(){
 }
 
 function drawScene(gl, programInfo, buffers, texture, deltaTime){
+  if(modelCache["Cube"] == undefined) return;
+  
   gl.clearColor(...CLEAR_COLOR);
   gl.clearDepth(1.0);
   gl.enable(gl.DEPTH_TEST);
   gl.depthFunc(gl.LEQUAL);
 
+  buffers = initBuffers(gl);
+
   //Clear the canvas before we start drawing on it
-  gl.clear(gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT));
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   // Create a projection matrix
   const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
@@ -63,7 +72,7 @@ function drawScene(gl, programInfo, buffers, texture, deltaTime){
   // Tell Webgl how to pull out the positions from the position buffer into the
   // vertexposition attribute
   {
-    // Pull out 2 values per iteration
+    // Pull out 3 values per iteration
     const numComponents = 3;
     // The data in the buffer is 32-bit floats
     const type = gl.FLOAT;
@@ -84,24 +93,24 @@ function drawScene(gl, programInfo, buffers, texture, deltaTime){
     gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
   }
 
-  // Tell Webgl how to pull out the colors from the color buffer into the
+  // Tell Webgl how to pull out the texCoords from the texCoord buffer into the
   // textureCoord attribute
-  {
-    const numComponents = 2;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.textureCoord);
-    gl.vertexAttribPointer(
-      programInfo.attribLocations.textureCoord,
-      numComponents,
-      type,
-      normalize,
-      stride,
-      offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
-  }
+  // {
+  //   const numComponents = 2;
+  //   const type = gl.FLOAT;
+  //   const normalize = false;
+  //   const stride = 0;
+  //   const offset = 0;
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, buffers.textureCoord);
+  //   gl.vertexAttribPointer(
+  //     programInfo.attribLocations.textureCoord,
+  //     numComponents,
+  //     type,
+  //     normalize,
+  //     stride,
+  //     offset);
+  //   gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+  // }
 
   //Tell WebGL to use our program when drawing
   gl.useProgram(programInfo.program);
@@ -119,7 +128,7 @@ function drawScene(gl, programInfo, buffers, texture, deltaTime){
   //Bind the texture to texture unit 0
   gl.bindTexture(gl.TEXTURE_2D, texture);
 
-  //Tell the shader we bound the teexture to texture unit 0
+  //Tell the shader we bound the texture to texture unit 0
   gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
 
   {
@@ -131,102 +140,18 @@ function drawScene(gl, programInfo, buffers, texture, deltaTime){
 }
 
 function initBuffers(gl){
-
-  // Now create an array of positions for the square.
-  const positions = [
-    // Front face
-    -1.0, -1.0,  1.0,
-    1.0, -1.0,  1.0,
-    1.0,  1.0,  1.0,
-    -1.0,  1.0,  1.0,
   
-    // Back face
-    -1.0, -1.0, -1.0,
-    -1.0,  1.0, -1.0,
-    1.0,  1.0, -1.0,
-    1.0, -1.0, -1.0,
-  
-    // Top face
-    -1.0,  1.0, -1.0,
-    -1.0,  1.0,  1.0,
-    1.0,  1.0,  1.0,
-    1.0,  1.0, -1.0,
-  
-    // Bottom face
-    -1.0, -1.0, -1.0,
-    1.0, -1.0, -1.0,
-    1.0, -1.0,  1.0,
-    -1.0, -1.0,  1.0,
-  
-    // Right face
-    1.0, -1.0, -1.0,
-    1.0,  1.0, -1.0,
-    1.0,  1.0,  1.0,
-    1.0, -1.0,  1.0,
-  
-    // Left face
-    -1.0, -1.0, -1.0,
-    -1.0, -1.0,  1.0,
-    -1.0,  1.0,  1.0,
-    -1.0,  1.0, -1.0,
-  ];
-
-  const textureCoordBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
-  const textureCoordinates = [
-    // Front
-    0.0,  0.0,
-    1.0,  0.0,
-    1.0,  1.0,
-    0.0,  1.0,
-    // Back
-    0.0,  0.0,
-    1.0,  0.0,
-    1.0,  1.0,
-    0.0,  1.0,
-    // Top
-    0.0,  0.0,
-    1.0,  0.0,
-    1.0,  1.0,
-    0.0,  1.0,
-    // Bottom
-    0.0,  0.0,
-    1.0,  0.0,
-    1.0,  1.0,
-    0.0,  1.0,
-    // Right
-    0.0,  0.0,
-    1.0,  0.0,
-    1.0,  1.0,
-    0.0,  1.0,
-    // Left
-    0.0,  0.0,
-    1.0,  0.0,
-    1.0,  1.0,
-    0.0,  1.0,
-  ];
-
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoordinates), gl.STATIC_DRAW);
-
-  //This array defines each face as two triangles, using the
-  // indices in the vertex array to specify each triangle's position
-  const indices = [
-    0,  1,  2,      0,  2,  3,    // front
-    4,  5,  6,      4,  6,  7,    // back
-    8,  9,  10,     8,  10, 11,   // top
-    12, 13, 14,     12, 14, 15,   // bottom
-    16, 17, 18,     16, 18, 19,   // right
-    20, 21, 22,     20, 22, 23,   // left
-  ]
-
-  //Create a buffer for the square's positions
+  const positions = modelCache["Cube"].vertices;
   const positionBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-  // Now pass the list of positions into WebGL to build the shape.
-  // We do this by creating a Float32Array from the JavaScript array, then
-  // use it to fill the current buffer.
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
 
+  const textureCoordinates = modelCache["Cube"].texCoordIndices;
+  const textureCoordBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoordinates), gl.STATIC_DRAW);
+
+  const indices = modelCache["Cube"].vertexIndices;
   const indexBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
@@ -282,7 +207,8 @@ function isPowerOf2(value)
   return (value & (value -1)) == 0;
 }
 
-function refreshCanvasSize(gl) {
+function refreshCanvasSize(gl) 
+{
   const canvas = gl.canvas;
   // Lookup the size the browser is displaying the canvas.
   var displayWidth  = window.innerWidth;
@@ -297,19 +223,94 @@ function refreshCanvasSize(gl) {
     canvas.height = displayHeight;
     gl.viewport(0,0,displayWidth,displayHeight);
   }
+}
 
-  function requestContent(filepath, callback)
+function requestContent(filepath, callback)
+{
+  var request = new XMLHttpRequest();
+  request.onreadystatechange = () => { 
+    if(request.readyState == 4)
+    {
+      if(request.status == 0 || request.status == 200)
+        callback(request.responseText);
+    }
+  };
+
+  request.open("GET", filepath, true);
+  request.send();
+}
+
+function loadOBJToModelCache(raw)
+{
+  var obj = loadOBJ(raw);
+  modelCache[obj.name] = obj;
+}
+
+function loadOBJ(raw)
+{
+  var name = "";
+  var vertices = [];
+  var normals = [];
+  var indices = [[],[],[]];
+  var texCoords = [];
+
+  var lines = raw.split("\n");
+  for(var i = 0; i < lines.length; ++i)
   {
-    var request = new XMLHttpRequest();
-    request.onreadystatechange = () => { 
-      if(this.readyState == 4)
-      {
-        if(this.status == 0 || this.status == 200)
-          callback(request.responseText);
-      }
-    };
+    var tokens = lines[i].split(' ');
 
-    request.open("GET", filepath, true);
-    request.send();
+    switch(tokens[0])
+    {
+      // Name
+      case 'o':
+        name = tokens.slice(1).join(' ');
+        break;
+
+      // Vertex
+      case 'v':
+        tokens.slice(1).forEach(value => {
+          vertices.push(parseFloat(value));
+        });
+        break;
+
+      // Vertex Normal
+      case 'vn':
+        tokens.slice(1).forEach(value => {
+          normals.push(parseFloat(value));
+        });
+        break;
+      
+      // Face
+      case 'f':
+        var faceVertices = tokens.slice(1)
+        if(faceVertices.length == 3)
+        {
+          faceVertices.forEach(value => {
+            var vertexAttribs = value.split("/");
+            for(var j = 0; j < 3; ++j)
+            {
+              if(vertexAttribs[j] != '')
+              {
+                indices[j].push(parseInt(vertexAttribs[j])-1);
+              }
+            }
+          });
+        }
+        else
+        {
+          console.warn("Model '" + name + "' could not be loaded because it contains non-triangular faces.");
+        }
+        break;
+    }
+  }
+
+  return {
+    name: name,
+    vertices: vertices,
+    normals: normals,
+    texCoords: texCoords,
+    vertexIndices: indices[0],
+    texCoordIndices: indices[1],
+    normalIndices: indices[2],
   }
 }
