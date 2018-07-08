@@ -33,7 +33,7 @@ function main(){
     then = now;
   
     drawScene(gl, programInfo, buffers, texture, deltaTime);
-    squareRotation[0] += deltaTime;
+    //squareRotation[0] += deltaTime;
     squareRotation[1] += deltaTime/.7;
     requestAnimationFrame(render);
   }
@@ -89,43 +89,11 @@ function drawScene(gl, programInfo, buffers, texture, deltaTime){
   // Tell Webgl how to pull out the positions from the position buffer into the
   // vertexposition attribute
   {
-    // Pull out 8 values per iteration
-    const numComponents = 3;
-    // The data in the buffer is 32-bit floats
-    const type = gl.FLOAT;
-    // Don't normalize
-    const normalize = false;
-    // how many bytes to get from one set of values to the next (0=use type and numComponents above)
-    const stride = GL_FLOAT_BYTES * 5;
-    // how many bytes inside the buffer to start from
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.vertexBuffer);
-    gl.vertexAttribPointer(
-      programInfo.attribLocations.vertexPosition,
-      numComponents,
-      type,
-      normalize,
-      stride,
-      offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
-  }
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.vertices);
+    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, GL_FLOAT_BYTES * 8, 0);
+    gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, 2, gl.FLOAT, false, GL_FLOAT_BYTES * 8, GL_FLOAT_BYTES * 3);
 
-  // Tell Webgl how to pull out the texCoords from the texCoord buffer into the
-  // textureCoord attribute
-  {
-    const numComponents = 2;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = GL_FLOAT_BYTES * 5;
-    const offset = GL_FLOAT_BYTES * 3;
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.textureCoord);
-    gl.vertexAttribPointer(
-      programInfo.attribLocations.textureCoord,
-      numComponents,
-      type,
-      normalize,
-      stride,
-      offset);
+    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
     gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
   }
 
@@ -251,7 +219,7 @@ function loadOBJ(raw)
   var positions = [];
   var texCoords = [];
   var normals = [];
-  var indexedFaces = [];
+  var indexedVertexAttribs = [];
 
   var lines = raw.split("\n");
   for(var i = 0; i < lines.length; ++i)
@@ -262,14 +230,14 @@ function loadOBJ(raw)
     {
       // Name
       case 'o':
-        name = tokens.slice(1).join(' ');
+        name = tokens.slice(1).join(' ').trim();
         break;
 
       // Vertex Position
       case 'v':
         var pos = [];
         tokens.slice(1).forEach(value => {
-          pos.push(parseFloat(value));
+          pos.push(parseFloat(value.trim()));
         });
         positions.push(pos);
         break;
@@ -278,7 +246,7 @@ function loadOBJ(raw)
       case 'vn':
         var n = [];
         tokens.slice(1).forEach(value => {
-          n.push(parseFloat(value));
+          n.push(parseFloat(value.trim()));
         });
         normals.push(n);
         break;
@@ -287,7 +255,7 @@ function loadOBJ(raw)
       case 'vt':
         var coords = [];
         tokens.slice(1).forEach(value =>{
-          coords.push(parseFloat(value));
+          coords.push(parseFloat(value.trim()));
         });
         texCoords.push(coords);
         break;
@@ -299,13 +267,13 @@ function loadOBJ(raw)
         {
           faceVertices.forEach(value => 
           {
-            var vertexAttribs = value.split("/");
+            var vertexAttribs = value.trim().split("/");
             vertexAttribsParsed = [];
             vertexAttribs.forEach(value => { 
               // Subtract 1 because WebGL indices are 0-based while objs are 1-based
               vertexAttribsParsed.push(parseInt(value)-1)
             });
-            indexedFaces.push(vertexAttribsParsed);
+            indexedVertexAttribs.push(vertexAttribsParsed);
           });
         }
         else
@@ -317,27 +285,35 @@ function loadOBJ(raw)
     }
   }
 
-  // Contains the positions, texCoords, and normals all together
+  // For each set of indexed attributes, retrieve their original values, interleave them, and assign each unique interleaved set an index.
   var fullVertices = [];
   var indexDict = [];
-  var combinedIndex = 0;
+  var combinedIndex = -1;
+  var nextIndex = -1;
   var combinedIndices = [];
-  indexedFaces.forEach(face => {
-    if(toString(...face) in indexDict)
+  indexedVertexAttribs.forEach(attribs => {
+    // If we've already indexed this set of attributes
+    if(attribs.join('/') in indexDict)
     {
-      combinedIndex = indexDict[toString(...face)];
+      combinedIndex = indexDict[attribs.join('/')]; // Get the existing index
     }
-    else
+    else // Otherwise we need to index it
     {
-      indexDict[toString(...face)] = combinedIndex++;
-      fullVertices.push(...positions[face[0]], ...texCoords[face[1]], ...normals[face[2]]);
+      nextIndex++;
+      combinedIndex = indexDict[attribs.join('/')] = nextIndex;
+      fullVertices.push(...positions[attribs[0]], ...texCoords[attribs[1]], ...normals[attribs[2]]);
     }
-    combinedIndices.push(indexDict[toString(...face)]);
+    combinedIndices.push(combinedIndex); // Add this index to the index array
   });
 
   return {
     name: name,
     vertices: fullVertices,
     indices: combinedIndices,
+  }
+
+  function face2str(str)
+  {
+    return str.replace(/[^A-Z0-9]/ig, "");
   }
 }
