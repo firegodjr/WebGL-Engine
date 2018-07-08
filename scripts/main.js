@@ -1,10 +1,11 @@
 const CLEAR_COLOR = vec4.fromValues(0.3, 0.3, 0.9, 1.0);
-var squareRotation = [0.0, 0.0, 0.0];
-var modelCache = [];
-var currentModel = "Cube";
+const DEFAULT_MODEL_NAME = "Cube";
+let squareRotation = [0.0, 0.0, 0.0];
+let modelStore = [];
+let currentModel = "Cube";
 main();
 
-// - - - - - - - - - - - - - - - -
+//#region mainloop
 
 function main(){
   const canvas = document.querySelector("#glCanvas");
@@ -16,8 +17,8 @@ function main(){
   }
 
   //Load a model into memory
-  requestContent("models/barrel_ornate.obj", loadOBJToModelCache);
-  requestContent("models/cube.obj", loadOBJToModelCache);
+  requestContent("models/barrel_ornate.obj", loadOBJToModelStore);
+  requestContent("models/cube.obj", loadOBJToModelStore);
 
   const shaderProgram = initDefaultShaderProgram(gl);
   const programInfo = getProgramInfo(gl, shaderProgram);
@@ -27,7 +28,7 @@ function main(){
   attachInputListeners(gl);
   refreshCanvasSize(gl);
 
-  var then = 0;
+  let then = 0;
   function render(now)
   {
     now *= 0.001; // convert to seconds
@@ -45,12 +46,12 @@ function main(){
 
 function initBuffers(gl){
   
-  const vertices = modelCache[currentModel].vertices;
+  const vertices = modelStore[currentModel].getVertices();
   const vertexBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
-  const indices = modelCache[currentModel].indices;
+  const indices = modelStore[currentModel].indices;
   const indexBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
@@ -59,7 +60,7 @@ function initBuffers(gl){
 }
 
 function drawScene(gl, programInfo, buffers, texture, deltaTime){
-  if(modelCache[currentModel] == undefined) return;
+  if(modelStore[currentModel] == undefined) return;
   
   gl.clearColor(...CLEAR_COLOR);
   gl.clearDepth(1.0);
@@ -126,7 +127,10 @@ function drawScene(gl, programInfo, buffers, texture, deltaTime){
   }
 }
 
-// Loads a texture from the 'textures' folder
+//#endregion
+
+//#region utilities
+
 function loadTexture(gl, url)
 {
   const texture = gl.createTexture();
@@ -178,8 +182,8 @@ function refreshCanvasSize(gl)
 {
   const canvas = gl.canvas;
   // Lookup the size the browser is displaying the canvas.
-  var displayWidth  = window.innerWidth;
-  var displayHeight = window.innerHeight;
+  let displayWidth  = window.innerWidth;
+  let displayHeight = window.innerHeight;
  
   // Check if the canvas is not the same size.
   if (canvas.width  != displayWidth ||
@@ -194,7 +198,7 @@ function refreshCanvasSize(gl)
 
 function requestContent(filepath, callback)
 {
-  var request = new XMLHttpRequest();
+  let request = new XMLHttpRequest();
   request.onreadystatechange = () => { 
     if(request.readyState == 4)
     {
@@ -207,20 +211,13 @@ function requestContent(filepath, callback)
   request.send();
 }
 
-function loadOBJToModelCache(raw)
+function loadOBJToModelStore(raw)
 {
-  var objs = loadOBJ(raw);
+  let objs = loadOBJ(raw);
   objs.forEach(obj => 
   { 
-    modelCache[obj.name] = obj;
+    modelStore[obj.name] = obj;
   });
-}
-
-function OBJModel(name, vertices, indices)
-{
-  this.name = name || "";
-  this.vertices = vertices || [];
-  this.indices = indices || [];
 }
 
 function loadOBJ(raw)
@@ -228,20 +225,20 @@ function loadOBJ(raw)
   const DEFAULT_POSITION = [0,0,0];
   const DEFAULT_TEXCOORD = [0,0];
   const DEFAULT_NORMAL = [0,1,0];
-  var indexDict = [];
-  var combinedIndex = -1;
-  var nextIndex = -1;
-  var positions = [];
-  var texCoords = [];
-  var normals = [];
-  var currObj = new OBJModel();
+  let indexDict = [];
+  let combinedIndex = -1;
+  let nextIndex = -1;
+  let positions = [];
+  let texCoords = [];
+  let normals = [];
+  let currObj = new OBJModel();
 
-  var objs = [];
+  let objs = [];
 
-  var lines = raw.split("\n");
-  for(var i = 0; i < lines.length; ++i)
+  let lines = raw.split("\n");
+  for(let i = 0; i < lines.length; ++i)
   {
-    var tokens = lines[i].split(' ');
+    let tokens = lines[i].split(' ');
 
     switch(tokens[0])
     {
@@ -259,48 +256,48 @@ function loadOBJ(raw)
 
       // Vertex Position
       case 'v':
-        var pos = [];
+        let pos = [];
         tokens.slice(1).forEach(value => {
           pos.push(parseFloat(value.trim()));
         });
-        positions.push(pos);
+        positions.push(vec3.fromValues(...pos));
         break;
 
       // Vertex Normal
       case 'vn':
-        var n = [];
+        let n = [];
         tokens.slice(1).forEach(value => {
           n.push(parseFloat(value.trim()));
         });
-        normals.push(n);
+        normals.push(vec3.fromValues(...n));
         break;
 
       // Vertex Texture Coords
       case 'vt':
-        var coords = [];
+        let coords = [];
         tokens.slice(1).forEach(value =>{
           coords.push(parseFloat(value.trim()));
         });
-        texCoords.push(coords);
+        texCoords.push(vec2.fromValues(...coords));
         break;
 
       // Face
       case 'f':
-        var faceVertices = tokens.slice(1)
+        let faceVertices = tokens.slice(1)
         if(faceVertices.length == 3)
         {
           // Convert the tokens to floats
           faceVertices.forEach(attribString => 
           {
             // Parse the indices
-            var attribs = [];
-            var splitAttribString = attribString.trim().split("/");
+            let attribs = [];
+            let splitAttribString = attribString.trim().split("/");
             splitAttribString.forEach(value => { 
               // Subtract 1 because WebGL indices are 0-based while objs are 1-based
               attribs.push(parseInt(value)-1)
             });
 
-            // For each set of indexed attributes, retrieve their original values, interleave them, and assign each unique interleaved set an index.
+            // For each set of indexed attributes, retrieve their original values and assign each unique set an index.
             // If we've already indexed this set of attributes
             if(attribString in indexDict)
             {
@@ -310,11 +307,9 @@ function loadOBJ(raw)
             {
               nextIndex++;
               combinedIndex = indexDict[attribString] = nextIndex;
-              currObj.vertices.push(
-                ...positions[attribs[0]], 
-                ...(isNaN(attribs[1]) ? DEFAULT_TEXCOORD : texCoords[attribs[1]]), 
-                ...(isNaN(attribs[2]) ? DEFAULT_NORMAL : normals[attribs[2]])
-              );
+              currObj.positions.push(positions[attribs[0]]);
+              currObj.texCoords.push(isNaN(attribs[1]) ? DEFAULT_TEXCOORD : texCoords[attribs[1]]); 
+              currObj.normals.push(isNaN(attribs[2]) ? DEFAULT_NORMAL : normals[attribs[2]]);
             }
             currObj.indices.push(combinedIndex); // Add this index to the index array
           });
@@ -336,10 +331,72 @@ function loadOBJ(raw)
   // Set indices relative to only this object's vertices, not to all vertices in the .obj file
   function normalizeIndices(obj)
   {
-    var baseIndex = obj.indices[0];
-    for(var i = 0; i < obj.indices.length; ++i)
+    let baseIndex = obj.indices[0];
+    for(let i = 0; i < obj.indices.length; ++i)
     {
       obj.indices[i] -= baseIndex;
     }
   }
 }
+
+//#endregion
+
+//#region objects
+
+function Stage(name, actors)
+{
+  this.name = name || "";
+  this.actors = actors || [];
+
+  this.getVertices = function()
+  {
+
+  }
+}
+
+function StageActor(name, modelName)
+{
+  this.name = name || "";
+  this.modelName = modelName || DEFAULT_MODEL_NAME;
+  this.translation = new vec3();
+  this.rotation = new quat4();
+  this.scale = new vec3();
+  this.modelMatrix = mat4.create();
+
+  // Returns the vertices of this actor's model, transformed by the actor's translation, rotation and scale
+  this.getVertices = function()
+  {
+    mat4.fromRotationTranslationScale(modelMatrix, this.rotation, this.translation, this.scale)
+    return modelStore[this.modelName].getVertices(modelMatrix);
+  }
+}
+
+function OBJModel(name, positions, texCoords, normals, indices)
+{
+  this.name = name || "";
+  this.positions = positions || [];
+  this.texCoords = texCoords || [];
+  this.normals = normals || [];
+  this.indices = indices || [];
+
+  // Returns the vertices of this model, transformed by the given model matrix
+  this.getVertices = function(modelMatrix)
+  {
+    let vertices = [];
+    modelMatrix = modelMatrix || mat4.create();
+
+    for(let i = 0; i < this.positions.length; ++i)
+    {
+      let transformedPosition = vec3.create();
+      vec3.transformMat4(transformedPosition, this.positions[i], modelMatrix);
+      vertices.push(
+        ...transformedPosition, 
+        ...this.texCoords[i],
+        ...this.normals[i]);
+    }
+
+    return vertices;
+  }
+}
+
+//#endregion
