@@ -1,6 +1,7 @@
 const CLEAR_COLOR = vec4.fromValues(0.3, 0.3, 0.9, 1.0);
 var squareRotation = [0.0, 0.0, 0.0];
 var modelCache = [];
+var currentModel = "Cube";
 main();
 
 // - - - - - - - - - - - - - - - -
@@ -15,6 +16,7 @@ function main(){
   }
 
   //Load a model into memory
+  requestContent("models/barrel_ornate.obj", loadOBJToModelCache);
   requestContent("models/cube.obj", loadOBJToModelCache);
 
   const shaderProgram = initDefaultShaderProgram(gl);
@@ -43,21 +45,21 @@ function main(){
 
 function initBuffers(gl){
   
-  const vertices = modelCache["Cube"].vertices;
+  const vertices = modelCache[currentModel].vertices;
   const vertexBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
-  const indices = modelCache["Cube"].indices;
+  const indices = modelCache[currentModel].indices;
   const indexBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
 
-  return { vertices: vertexBuffer, indices: indexBuffer,};
+  return { vertices: vertexBuffer, indices: indexBuffer, vertexCount: indices.length,};
 }
 
 function drawScene(gl, programInfo, buffers, texture, deltaTime){
-  if(modelCache["Cube"] == undefined) return;
+  if(modelCache[currentModel] == undefined) return;
   
   gl.clearColor(...CLEAR_COLOR);
   gl.clearDepth(1.0);
@@ -81,7 +83,7 @@ function drawScene(gl, programInfo, buffers, texture, deltaTime){
 
   // Set the drawing position to the "identity" point
   const modelViewMatrix = mat4.create();
-  mat4.translate(modelViewMatrix, modelViewMatrix, [-0.0, 0.0, -6.0]);
+  mat4.translate(modelViewMatrix, modelViewMatrix, [-0.0, -3.0, -20.0]);
   mat4.rotateX(modelViewMatrix, modelViewMatrix, squareRotation[0]);
   mat4.rotateY(modelViewMatrix, modelViewMatrix, squareRotation[1]);
 
@@ -118,7 +120,7 @@ function drawScene(gl, programInfo, buffers, texture, deltaTime){
 
   {
     const offset = 0;
-    const vertexCount = 36;
+    const vertexCount = buffers.vertexCount;
     const type = gl.UNSIGNED_SHORT;
     gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
   }
@@ -207,19 +209,34 @@ function requestContent(filepath, callback)
 
 function loadOBJToModelCache(raw)
 {
-  var obj = loadOBJ(raw);
-  modelCache[obj.name] = obj;
+  var objs = loadOBJ(raw);
+  objs.forEach(obj => 
+  { 
+    modelCache[obj.name] = obj;
+  });
+}
+
+function OBJModel(name, vertices, indices)
+{
+  this.name = name || "";
+  this.vertices = vertices || [];
+  this.indices = indices || [];
 }
 
 function loadOBJ(raw)
 {
-  var name = "";
-
-  // Contains individual vertex components
+  const DEFAULT_POSITION = [0,0,0];
+  const DEFAULT_TEXCOORD = [0,0];
+  const DEFAULT_NORMAL = [0,1,0];
+  var indexDict = [];
+  var combinedIndex = -1;
+  var nextIndex = -1;
   var positions = [];
   var texCoords = [];
   var normals = [];
-  var indexedVertexAttribs = [];
+  var currObj = new OBJModel();
+
+  var objs = [];
 
   var lines = raw.split("\n");
   for(var i = 0; i < lines.length; ++i)
@@ -230,7 +247,14 @@ function loadOBJ(raw)
     {
       // Name
       case 'o':
-        name = tokens.slice(1).join(' ').trim();
+        // Create a new OBJModel object and set currObj as a reference to it
+        if(currObj.name != "")
+        {
+          normalizeIndices(currObj);
+          objs.push(currObj);
+        }
+        currObj = new OBJModel();
+        currObj.name = tokens.slice(1).join(' ').trim();
         break;
 
       // Vertex Position
@@ -265,55 +289,57 @@ function loadOBJ(raw)
         var faceVertices = tokens.slice(1)
         if(faceVertices.length == 3)
         {
-          faceVertices.forEach(value => 
+          // Convert the tokens to floats
+          faceVertices.forEach(attribString => 
           {
-            var vertexAttribs = value.trim().split("/");
-            vertexAttribsParsed = [];
-            vertexAttribs.forEach(value => { 
+            // Parse the indices
+            var attribs = [];
+            var splitAttribString = attribString.trim().split("/");
+            splitAttribString.forEach(value => { 
               // Subtract 1 because WebGL indices are 0-based while objs are 1-based
-              vertexAttribsParsed.push(parseInt(value)-1)
+              attribs.push(parseInt(value)-1)
             });
-            indexedVertexAttribs.push(vertexAttribsParsed);
+
+            // For each set of indexed attributes, retrieve their original values, interleave them, and assign each unique interleaved set an index.
+            // If we've already indexed this set of attributes
+            if(attribString in indexDict)
+            {
+              combinedIndex = indexDict[attribString]; // Get the existing index
+            }
+            else // Otherwise we need to index it
+            {
+              nextIndex++;
+              combinedIndex = indexDict[attribString] = nextIndex;
+              currObj.vertices.push(
+                ...positions[attribs[0]], 
+                ...(isNaN(attribs[1]) ? DEFAULT_TEXCOORD : texCoords[attribs[1]]), 
+                ...(isNaN(attribs[2]) ? DEFAULT_NORMAL : normals[attribs[2]])
+              );
+            }
+            currObj.indices.push(combinedIndex); // Add this index to the index array
           });
         }
         else
         {
-          console.warn("Model '" + name + "' could not be loaded because it contains non-triangular faces.");
+          console.warn("Model '" + currObj.name + "' could not be loaded because it contains non-triangular faces.");
           //TODO: Triangulate faces automatically
         }
         break;
     }
   }
 
-  // For each set of indexed attributes, retrieve their original values, interleave them, and assign each unique interleaved set an index.
-  var fullVertices = [];
-  var indexDict = [];
-  var combinedIndex = -1;
-  var nextIndex = -1;
-  var combinedIndices = [];
-  indexedVertexAttribs.forEach(attribs => {
-    // If we've already indexed this set of attributes
-    if(attribs.join('/') in indexDict)
-    {
-      combinedIndex = indexDict[attribs.join('/')]; // Get the existing index
-    }
-    else // Otherwise we need to index it
-    {
-      nextIndex++;
-      combinedIndex = indexDict[attribs.join('/')] = nextIndex;
-      fullVertices.push(...positions[attribs[0]], ...texCoords[attribs[1]], ...normals[attribs[2]]);
-    }
-    combinedIndices.push(combinedIndex); // Add this index to the index array
-  });
+  normalizeIndices(currObj);
+  objs.push(currObj);
 
-  return {
-    name: name,
-    vertices: fullVertices,
-    indices: combinedIndices,
-  }
+  return objs;
 
-  function face2str(str)
+  // Set indices relative to only this object's vertices, not to all vertices in the .obj file
+  function normalizeIndices(obj)
   {
-    return str.replace(/[^A-Z0-9]/ig, "");
+    var baseIndex = obj.indices[0];
+    for(var i = 0; i < obj.indices.length; ++i)
+    {
+      obj.indices[i] -= baseIndex;
+    }
   }
 }
