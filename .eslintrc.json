@@ -1,0 +1,30 @@
+{
+	"extends": "airbnb",
+	"env": {
+		"browser": true,
+		"es6": true
+	},
+	"globals": {
+		"vec4": true,
+		"mat4": true
+	},
+	"parserOptions": {
+		"ecmaVersion": 6
+	},
+	"rules": {
+		"indent": ["error", "tab", {
+			"SwitchCase": 1
+		}],
+		"no-tabs": "off",
+		"no-mixed-spaces-and-tabs": "error",
+		"quotes": ["warn", "single", {
+			"allowTemplateLiterals": true
+		}],
+		"no-var": "error",
+		"brace-style": ["warn", "allman", {
+			"allowSingleLine": true
+		}]
+	},
+	"root": true
+	
+}
