@@ -1,40 +1,21 @@
 // Vertex shader program
-const vsSource = `
-  attribute vec4 aVertexPosition;
-  attribute vec2 aTextureCoord;
-
-  uniform mat4 uModelViewMatrix;
-  uniform mat4 uProjectionMatrix;
-
-  varying highp vec2 vTextureCoord;
-
-  void main() {
-    gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
-    vTextureCoord = aTextureCoord;
-  }
-`;
-
 // Fragment shader program
-const fsSource = `
-varying highp vec2 vTextureCoord;
-
-uniform sampler2D uSampler;
-
-void main() 
-{
-  gl_FragColor = texture2D(uSampler, vTextureCoord);
-  //gl_FragColor = vec4(0.,0.,0.,1.);
-}
-`;
-
 
 // Requests and returns a fully compiled shader object
-function loadShader(gl, type, source)
+/**
+ * This function accepts a promise for a string, and loads the specified shader into the GL context once the promise is resolved.
+ * @param {WebGLRenderingContext} gl
+ * @param {number} type
+ * @param {Promise<string>} source
+ * @returns {Promise<WebGLShader>} The compiled shader
+ */
+async function loadShader(gl, type, source)
 {
 	const shader = gl.createShader(type);
+	const textSource = await source;
 
 	// Send the source to the shader object we just initialized
-	gl.shaderSource(shader, source);
+	gl.shaderSource(shader, textSource);
 
 	// Compile the shader program
 	gl.compileShader(shader);
@@ -42,42 +23,72 @@ function loadShader(gl, type, source)
 	// See if it compiled successfully
 	if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS))
 	{
-		alert(`An error occurred compiling the shaders: ${gl.getShaderInfoLog(shader)}`);
+		const infoLog = gl.getShaderInfoLog(shader);
 		gl.deleteShader(shader);
-		return undefined;
+		throw new Error(`An error occurred compiling the shaders:\n${infoLog}`);
 	}
 
 	return shader;
 }
 
-// Creates a shader program
-function initShaderProgram(gl, vertString, fragString)
+/**
+ * Creates a shader program
+ * @param {WebGLRenderingContext} gl
+ * @param {Promise<string>} vertexShaderSource
+ * @param {Promise<string>} fragmentShaderSource
+ * @returns {Promise<WebGLProgram>} The initialized shader program.
+ */
+async function initShaderProgram(gl, vertexShaderSource, fragmentShaderSource)
 {
-	const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vertString);
-	const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fragString);
+	const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+	const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
 
 	// Create the shader program
 	const shaderProgram = gl.createProgram();
-	gl.attachShader(shaderProgram, vertexShader);
-	gl.attachShader(shaderProgram, fragmentShader);
+	gl.attachShader(shaderProgram, await vertexShader);
+	gl.attachShader(shaderProgram, await fragmentShader);
 	gl.linkProgram(shaderProgram);
 
 	// If creating the shader program failed, alert
 	if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS))
 	{
-		return alert(`Unable to initialize the shader program: ${gl.getProgramInfoLog(shaderProgram)}`);
+		throw new Error(`Unable to initialize the shader program: ${gl.getProgramInfoLog(shaderProgram)}`);
 	}
 
 	return shaderProgram;
 }
 
 // Creates a shader program with default shaders
-function initDefaultShaderProgram(gl)
+/**
+ * Initializes the default shaders into the WebGLRenderingContext
+ * @param {WebGLRenderingContext} gl
+ * @returns {Promise<WebGLProgram>}
+ */
+async function initDefaultShaderProgram(gl)
 {
+	const vsSource = fetch('shaders/vertexShader.vert').then((v) => { // eslint-disable-line brace-style
+		if (v.ok)
+		{
+			return v.text();
+		}
+		throw new Error('Unsuccessful fetch request.');
+	});
+	const fsSource = fetch('shaders/fragmentShader.frag').then((v) => { // eslint-disable-line brace-style
+		if (v.ok)
+		{
+			return v.text();
+		}
+		throw new Error('Unsuccessful fetch request.');
+	});
 	return initShaderProgram(gl, vsSource, fsSource);
 }
 
-
+/**
+ * Returns the graphic program info
+ * @param {WebGLRenderingContext} gl
+ * @param {WebGLProgram} shaderProgram
+ * @return {{ program: WebGLProgram, attribLocations: {vertexPosition: number, textureCoord: number}, uniformLocations:{projectionMatrix: WebGLUniformLocation, modelViewMatrix: WebGLUniformLocation, uSampler: WebGLUniformLocation}}}
+ */
 function getProgramInfo(gl, shaderProgram)
 {
 	return {

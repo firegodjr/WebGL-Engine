@@ -15,7 +15,7 @@
 		"getProgramInfo": true
 	},
 	"parserOptions": {
-		"ecmaVersion": 6
+		"ecmaVersion": 2017
 	},
 	"rules": {
 		"indent": ["error", "tab", {
@@ -29,6 +29,7 @@
 		"no-unused-vars": "warn",
 		"no-param-reassign": "off",
 		"no-var": "error",
+		"no-console": "off",
 		"quotes": ["warn", "single", {
 			"allowTemplateLiterals": true
 		}],
@@ -37,7 +38,8 @@
 		}],
 		"max-len": "off",
 		"prefer-destructuring": "warn",
-		"comma-dangle": ["warn", "only-multiline"]
+		"comma-dangle": ["warn", "only-multiline"],
+		"implicit-arrow-linebreak": ["warn", "beside"]
 	},
 	"root": true
 	
