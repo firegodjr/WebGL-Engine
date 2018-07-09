@@ -40,7 +40,7 @@ function Transform(translation, rotation, scale)
 	this.scaleY = (value) => { this.scale[1] *= value; };
 	this.scaleZ = (value) => { this.scale[2] *= value; };
 
-	this.getModelMatrix = () => { // eslint-disable-line brace-style
+	this.getModelMatrix = () => {
 		mat4.fromRotationTranslationScale(this.modelMatrix, this.rotation, this.translation, this.scale);
 		return this.modelMatrix;
 	};
@@ -59,7 +59,7 @@ function StageActor(name, modelName)
 	};
 
 	// Returns the vertices of this actor's model, transformed by the actor's translation, rotation and scale
-	this.getVertices = () => { // eslint-disable-line brace-style
+	this.getVertices = () => {
 		if (modelStore[this.modelName] === undefined)
 		{
 			console.error(`Attempted to get vertices of non-loaded model '${this.modelName}'.`);
@@ -68,7 +68,7 @@ function StageActor(name, modelName)
 		return modelStore[this.modelName].getVertices(this.transform.getModelMatrix());
 	};
 
-	this.getIndices = () => { // eslint-disable-line brace-style
+	this.getIndices = () => {
 		if (modelStore[this.modelName] === undefined)
 		{
 			console.error(`Attempted to get indices of non-loaded model '${this.modelName}'.`);
@@ -89,9 +89,9 @@ function Stage(name, actors)
 		actors.forEach(actor => actor.update(deltaTime, elapsedTime));
 	};
 
-	this.getVertices = () => { // eslint-disable-line brace-style
+	this.getVertices = () => {
 		const stageVertices = [];
-		actors.forEach((actor) => { // eslint-disable-line brace-style
+		actors.forEach((actor) => {
 			stageVertices.push(...actor.getVertices());
 		});
 		return stageVertices;
@@ -120,7 +120,7 @@ function OBJModel(name, positions, texCoords, normals, indices)
 	this.indices = indices || [];
 
 	// Returns the vertices of this model, optionally transformed by the given model matrix
-	this.getVertices = (modelMatrix) => { // eslint-disable-line brace-style
+	this.getVertices = (modelMatrix) => {
 		const vertices = [];
 		modelMatrix = modelMatrix || mat4.create();
 
@@ -306,7 +306,7 @@ function attachInputListeners(gl)
 async function safeFetch(filepath)
 {
 	return fetch(filepath)
-		.then((resp) => { // eslint-disable-line brace-style
+		.then((resp) => {
 			if (!resp.ok)
 			{
 				throw new Error(`Unsuccessful fetch of resource '${filepath}'`);
@@ -370,7 +370,7 @@ function loadOBJ(filename, raw)
 				}
 				case 'v': { // Vertex Position
 					const pos = [];
-					tokens.slice(1).forEach((value) => { // eslint-disable-line brace-style
+					tokens.slice(1).forEach((value) => {
 						pos.push(parseFloat(value.trim()));
 					});
 					positions.push(vec3.fromValues(...pos));
@@ -378,7 +378,7 @@ function loadOBJ(filename, raw)
 				}
 				case 'vn': { // Vertex Normal
 					const n = [];
-					tokens.slice(1).forEach((value) => { // eslint-disable-line brace-style
+					tokens.slice(1).forEach((value) => {
 						n.push(parseFloat(value.trim()));
 					});
 					normals.push(vec3.fromValues(...n));
@@ -386,7 +386,7 @@ function loadOBJ(filename, raw)
 				}
 				case 'vt': { // Vertex Texture Coords
 					const coords = [];
-					tokens.slice(1).forEach((value) => { // eslint-disable-line brace-style
+					tokens.slice(1).forEach((value) => {
 						coords.push(parseFloat(value.trim()));
 					});
 					texCoords.push(vec2.fromValues(...coords));
@@ -398,11 +398,11 @@ function loadOBJ(filename, raw)
 					{
 						// Convert the tokens to floats
 						/* eslint-disable-next-line no-loop-func */
-						faceVertices.forEach((attribString) => { // eslint-disable-line brace-style
+						faceVertices.forEach((attribString) => {
 							// Parse the indices
 							const attribs = [];
 							const splitAttribString = attribString.trim().split('/');
-							splitAttribString.forEach((value) => { // eslint-disable-line brace-style
+							splitAttribString.forEach((value) => {
 								// Subtract 1 because WebGL indices are 0-based while objs are 1-based
 								attribs.push(parseInt(value, 10) - 1);
 							});
@@ -454,7 +454,7 @@ function loadOBJ(filename, raw)
 function loadOBJToModelStore(filename, raw)
 {
 	const objs = loadOBJ(filename, raw);
-	objs.forEach((obj) => { // eslint-disable-line brace-style
+	objs.forEach((obj) => {
 		modelStore[obj.name] = obj;
 	});
 }
@@ -479,7 +479,7 @@ function main()
 	const texture = loadTexture(gl, 'firefox.png');
 
 	initDefaultShaderProgram(gl)
-		.then((prog) => { // eslint-disable-line brace-style
+		.then((prog) => {
 			const programInfo = getProgramInfo(gl, prog);
 
 			attachInputListeners(gl);
