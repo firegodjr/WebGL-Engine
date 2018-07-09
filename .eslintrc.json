@@ -1,0 +1,43 @@
+{
+	"extends": "airbnb",
+	"env": {
+		"browser": true,
+		"es6": true
+	},
+	"globals": {
+		"mat4": true,
+		"vec2": true,
+		"vec3": true,
+		"vec4": true,
+		"quat4": true,
+		"initDefaultShaderProgram": true,
+		"getProgramInfo": true
+	},
+	"parserOptions": {
+		"ecmaVersion": 6
+	},
+	"rules": {
+		"indent": ["error", "tab", {
+			"SwitchCase": 1
+		}],
+		"no-tabs": "off",
+		"no-mixed-spaces-and-tabs": "warn",
+		"no-plusplus": "off",
+		"no-bitwise": "warn",
+		"no-lone-blocks": "off",
+		"no-unused-vars": "warn",
+		"no-param-reassign": "off",
+		"no-var": "error",
+		"quotes": ["warn", "single", {
+			"allowTemplateLiterals": true
+		}],
+		"brace-style": ["warn", "allman", {
+			"allowSingleLine": true
+		}],
+		"max-len": "off",
+		"prefer-destructuring": "warn",
+		"comma-dangle": ["warn", "only-multiline"]
+	},
+	"root": true
+	
+}
