@@ -1,5 +1,6 @@
 const CLEAR_COLOR = vec4.fromValues(0.3, 0.3, 0.9, 1.0);
 const DEFAULT_MODEL_NAME = 'Cube';
+const VERTEX_COMPONENTS_LENGTH = 8;
 const modelStore = [];
 let currentStage = {};
 
@@ -34,6 +35,7 @@ function StageActor(name, modelName)
 
 	this.update = (deltaTime) => {
 		// TODO eval() from externally loaded script
+		quat.rotateY(this.transform.rotation, this.transform.rotation, deltaTime);
 	};
 
 	// Returns the vertices of this actor's model, transformed by the actor's translation, rotation and scale
@@ -80,7 +82,7 @@ function Stage(name, actors)
 		let lastIndex = 0;
 		actors.forEach((actor) => {
 			const actorIndices = actor.getIndices().map(value => value + lastIndex);
-			lastIndex = actor.getVertices().length;
+			lastIndex = actor.getVertices().length / VERTEX_COMPONENTS_LENGTH;
 			stageIndices.push(...actorIndices);
 		});
 		return stageIndices;
@@ -169,8 +171,8 @@ function drawScene(gl, programInfo, texture)
 	// vertexposition attribute
 	{
 		gl.bindBuffer(gl.ARRAY_BUFFER, buffers.vertices);
-		gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, GL_FLOAT_BYTES * 8, 0);
-		gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, 2, gl.FLOAT, false, GL_FLOAT_BYTES * 8, GL_FLOAT_BYTES * 3);
+		gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, GL_FLOAT_BYTES * VERTEX_COMPONENTS_LENGTH, 0);
+		gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, 2, gl.FLOAT, false, GL_FLOAT_BYTES * VERTEX_COMPONENTS_LENGTH, GL_FLOAT_BYTES * 3);
 
 		gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
 		gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
