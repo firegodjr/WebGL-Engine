@@ -461,6 +461,5 @@ function main()
 
 const testActor = new StageActor('Test Actor', 'Cube');
 currentStage = new Stage('Main', [testActor]);
-const getCurrentModel = () => document.getElementById('modelSelect').value;
 
 main();
