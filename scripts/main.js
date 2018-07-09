@@ -20,6 +20,26 @@ function Transform(translation, rotation, scale)
 	this.scale = scale || vec3.fromValues(1, 1, 1);
 	this.modelMatrix = mat4.create();
 
+	this.setPosX = (value) => { this.translation[0] = value; };
+	this.setPosY = (value) => { this.translation[1] = value; };
+	this.setPosZ = (value) => { this.translation[2] = value; };
+	this.setRotationX = (value) => { quat.rotateX(this.rotation, quat.create(), value); };
+	this.setRotationY = (value) => { quat.rotateY(this.rotation, quat.create(), value); };
+	this.setRotationZ = (value) => { quat.rotateZ(this.rotation, quat.create(), value); };
+	this.setScaleX = (value) => { this.scale[0] = value; };
+	this.setScaleY = (value) => { this.scale[1] = value; };
+	this.setScaleZ = (value) => { this.scale[2] = value; };
+
+	this.translateX = (value) => { this.translation[0] += value; };
+	this.translateY = (value) => { this.translation[1] += value; };
+	this.translateZ = (value) => { this.translation[2] += value; };
+	this.rotateX = (value) => { quat.rotateX(this.rotation, this.rotation, value); };
+	this.rotateY = (value) => { quat.rotateY(this.rotation, this.rotation, value); };
+	this.rotateZ = (value) => { quat.rotateZ(this.rotation, this.rotation, value); };
+	this.scaleX = (value) => { this.scale[0] *= value; };
+	this.scaleY = (value) => { this.scale[1] *= value; };
+	this.scaleZ = (value) => { this.scale[2] *= value; };
+
 	this.getModelMatrix = () => {
 		mat4.fromRotationTranslationScale(this.modelMatrix, this.rotation, this.translation, this.scale);
 		return this.modelMatrix;
@@ -33,9 +53,9 @@ function StageActor(name, modelName)
 	this.modelName = modelName || DEFAULT_MODEL_NAME;
 	this.transform = new Transform();
 
-	this.update = (deltaTime) => {
+	this.update = (deltaTime, elapsedTime) => {
 		// TODO eval() from externally loaded script
-		quat.rotateY(this.transform.rotation, this.transform.rotation, deltaTime);
+		this.transform.rotateY(deltaTime);
 	};
 
 	// Returns the vertices of this actor's model, transformed by the actor's translation, rotation and scale
@@ -65,8 +85,8 @@ function Stage(name, actors)
 	this.actors = actors || [];
 	this.actors.camera = new StageActor('camera', DEFAULT_MODEL_NAME);
 
-	this.update = (deltaTime) => {
-		actors.forEach(actor => actor.update(deltaTime));
+	this.update = (deltaTime, elapsedTime) => {
+		actors.forEach(actor => actor.update(deltaTime, elapsedTime));
 	};
 
 	this.getVertices = () => {
@@ -451,7 +471,7 @@ function main()
 		const deltaTime = timeSecs - lastFrameSec;
 		lastFrameSec = timeSecs;
 
-		currentStage.update(deltaTime);
+		currentStage.update(deltaTime, timeSecs);
 		drawScene(gl, programInfo, texture);
 		requestAnimationFrame(render);
 	}
