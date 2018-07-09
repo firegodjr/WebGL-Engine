@@ -1,91 +1,122 @@
 const CLEAR_COLOR = vec4.fromValues(0.3, 0.3, 0.9, 1.0);
 const DEFAULT_MODEL_NAME = 'Cube';
-const squareRotation = [0.0, 0.0, 0.0];
 const modelStore = [];
-const getCurrentModel = () => document.getElementById('modelSelect').value;
-
-// #region mainloop
+let currentStage = {};
 
 // #region Objects/Classes
-
-// Stores all data for a given stage, or worldspace
-function Stage(name, actors)
-{
-  this.name = name || "";
-  this.actors = actors || [];
-
-  this.getVertices = function()
-  {
-
-  }
-}
 
 // Stores data relating to the position, rotation and scale of an actor in a stage
 function Transform(translation, rotation, scale)
 {
-  this.translation = translation || new vec3();
-  this.rotation = rotation || new quat4();
-  this.scale = scale || new vec3();
-  this.modelMatrix = mat4.create();
+	this.translation = translation || vec3.create();
+	this.rotation = rotation || quat.create();
+	this.scale = scale || vec3.create();
+	this.modelMatrix = mat4.create();
 
-  this.getModelMatrix = function()
-  {
-    mat4.fromRotationTranslationScale(modelMatrix, this.rotation, this.translation, this.scale)
-    return modelMatrix;
-  }
+	this.getModelMatrix = () => {
+		mat4.fromRotationTranslationScale(this.modelMatrix, this.rotation, this.translation, this.scale);
+		return this.getModelMatrixmodelMatrix;
+	};
 }
 
+// An entity that exists in worldspace
 function StageActor(name, modelName)
 {
-  this.name = name || "";
-  this.modelName = modelName || DEFAULT_MODEL_NAME;
-  this.transform = new Transform();
+	this.name = name || '';
+	this.modelName = modelName || DEFAULT_MODEL_NAME;
+	this.transform = new Transform();
 
-  // Returns the vertices of this actor's model, transformed by the actor's translation, rotation and scale
-  this.getVertices = function()
-  {
-    return modelStore[this.modelName].getVertices(this.transform.modelMatrix);
-  }
+	// Returns the vertices of this actor's model, transformed by the actor's translation, rotation and scale
+	this.getVertices = () => {
+		if (modelStore[this.modelName] === undefined)
+		{
+			console.error(`Attempted to get vertices of non-loaded model '${this.modelName}'.`);
+			return [];
+		}
+		return modelStore[this.modelName].getVertices(this.transform.modelMatrix);
+	};
+
+	this.getIndices = () => {
+		if (modelStore[this.modelName] === undefined)
+		{
+			console.error(`Attempted to get indices of non-loaded model '${this.modelName}'.`);
+			return [];
+		}
+		return modelStore[this.modelName].getIndices();
+	};
+}
+
+// Stores all data for a given stage, or worldspace
+function Stage(name, actors)
+{
+	this.name = name || '';
+	this.actors = actors || [];
+	this.actors.camera = new StageActor('camera', DEFAULT_MODEL_NAME);
+
+	this.getVertices = () => {
+		const stageVertices = [];
+		actors.forEach((actor) => {
+			stageVertices.push(...actor.getVertices());
+		});
+		return stageVertices;
+	};
+
+	this.getIndices = () => {
+		const stageIndices = [];
+		let lastIndex = 0;
+		actors.forEach((actor) => {
+			const actorIndices = actor.getIndices().map(value => value + lastIndex);
+			lastIndex = actor.getVertices().length;
+			stageIndices.push(...actorIndices);
+		});
+		return stageIndices;
+	};
 }
 
 function OBJModel(name, positions, texCoords, normals, indices)
 {
-  this.name = name || "";
-  this.positions = positions || [];
-  this.texCoords = texCoords || [];
-  this.normals = normals || [];
-  this.indices = indices || [];
+	this.name = name || '';
+	this.positions = positions || [];
+	this.texCoords = texCoords || [];
+	this.normals = normals || [];
+	this.indices = indices || [];
 
-  // Returns the vertices of this model, optionally transformed by the given model matrix
-  this.getVertices = function(modelMatrix)
-  {
-    let vertices = [];
-    modelMatrix = modelMatrix || mat4.create();
+	// Returns the vertices of this model, optionally transformed by the given model matrix
+	this.getVertices = (modelMatrix) => {
+		const vertices = [];
+		modelMatrix = modelMatrix || mat4.create();
 
-    for(let i = 0; i < this.positions.length; ++i)
-    {
-      let transformedPosition = vec3.create();
-      vec3.transformMat4(transformedPosition, this.positions[i], modelMatrix);
-      vertices.push(
-        ...transformedPosition, 
-        ...this.texCoords[i],
-        ...this.normals[i]);
-    }
+		for (let i = 0; i < this.positions.length; ++i)
+		{
+			const transformedPosition = vec3.create();
+			vec3.transformMat4(transformedPosition, this.positions[i], modelMatrix);
+			vertices.push(
+				...transformedPosition,
+				...this.texCoords[i],
+				...this.normals[i]
+			);
+		}
 
-    return vertices;
-  }
+		return vertices;
+	};
+
+	this.getIndices = () => this.indices;
 }
 
 // #endregion Objects/Classes
-
+/**
+ * Creates and initializes the vertex and index buffers
+ * @param {WebGLRenderingContext} gl
+ * @returns vertexBuffer id, indexBuffer id, and vertex count
+ */
 function initBuffers(gl)
 {
-	const vertices = modelStore[getCurrentModel()].getVertices();
+	const vertices = currentStage.getVertices();
 	const vertexBuffer = gl.createBuffer();
 	gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
 	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
-	const { indices } = modelStore[getCurrentModel()];
+	const indices = currentStage.getIndices();
 	const indexBuffer = gl.createBuffer();
 	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
 	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
@@ -95,8 +126,6 @@ function initBuffers(gl)
 
 function drawScene(gl, programInfo, texture)
 {
-	if (modelStore[getCurrentModel()] === undefined) return;
-
 	gl.clearColor(...CLEAR_COLOR);
 	gl.clearDepth(1.0);
 	gl.enable(gl.DEPTH_TEST);
@@ -117,11 +146,9 @@ function drawScene(gl, programInfo, texture)
 	// Initialize to projection matrix values
 	mat4.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
 
-	// Set the drawing position to the "identity" point
+	// Set the drawing position to the 'identity' point
 	const modelViewMatrix = mat4.create();
 	mat4.translate(modelViewMatrix, modelViewMatrix, [-0.0, -3.0, -20.0]);
-	mat4.rotateX(modelViewMatrix, modelViewMatrix, squareRotation[0]);
-	mat4.rotateY(modelViewMatrix, modelViewMatrix, squareRotation[1]);
 
 	const GL_FLOAT_BYTES = 4;
 	// Tell Webgl how to pull out the positions from the position buffer into the
@@ -212,18 +239,17 @@ function loadTexture(gl, url)
 
 function refreshCanvasSize(gl)
 {
-	const canvas = gl.canvas;
 	// Lookup the size the browser is displaying the canvas.
 	const displayWidth = window.innerWidth;
 	const displayHeight = window.innerHeight;
 
 	// Check if the canvas is not the same size.
-	if (canvas.width !== displayWidth
-	 || canvas.height !== displayHeight)
+	if (gl.canvas.width !== displayWidth
+		|| gl.canvas.height !== displayHeight)
 	{
 		// Make the canvas the same size
-		canvas.width = displayWidth;
-		canvas.height = displayHeight;
+		gl.canvas.width = displayWidth;
+		gl.canvas.height = displayHeight;
 		gl.viewport(0, 0, displayWidth, displayHeight);
 	}
 }
@@ -357,7 +383,7 @@ function loadOBJ(raw)
 					break;
 				}
 				default: {
-					console.warn(`Unable to parse .obj file: unknown element token '${tokens[0]}'`);
+					console.warn(`.obj file: unknown element token '${tokens[0]}'`);
 					break;
 				}
 			}
@@ -410,18 +436,14 @@ function main()
 		lastFrameSec = timeSecs;
 
 		drawScene(gl, programInfo, texture);
-		// squareRotation[0] += deltaTime;
-		squareRotation[1] += deltaTime / 0.7;
 		requestAnimationFrame(render);
 	}
 
 	requestAnimationFrame(render);
 }
 
-
-// #region objects
-
-
-// #endregion
+const testActor = new StageActor('Test Actor', 'Cube');
+currentStage = new Stage('Main', [testActor]);
+const getCurrentModel = () => document.getElementById('modelSelect').value;
 
 main();

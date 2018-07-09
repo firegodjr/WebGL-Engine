@@ -9,7 +9,8 @@
 		"vec2": true,
 		"vec3": true,
 		"vec4": true,
-		"quat4": true,
+		"quat": true,
+		"modelStore": true,
 		"initDefaultShaderProgram": true,
 		"getProgramInfo": true
 	},
