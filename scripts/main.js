@@ -2,7 +2,7 @@ const CLEAR_COLOR = vec4.fromValues(0.3, 0.3, 0.9, 1.0);
 const DEFAULT_MODEL_NAME = 'Cube';
 const squareRotation = [0.0, 0.0, 0.0];
 const modelStore = [];
-const currentModel = 'Cube';
+const getCurrentModel = () => document.getElementById('modelSelect').value;
 
 // #region mainloop
 
@@ -65,12 +65,12 @@ function OBJModel(name, positions, texCoords, normals, indices)
 
 function initBuffers(gl)
 {
-	const vertices = modelStore[currentModel].getVertices();
+	const vertices = modelStore[getCurrentModel()].getVertices();
 	const vertexBuffer = gl.createBuffer();
 	gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
 	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
-	const { indices } = modelStore[currentModel];
+	const { indices } = modelStore[getCurrentModel()];
 	const indexBuffer = gl.createBuffer();
 	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
 	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
@@ -80,7 +80,7 @@ function initBuffers(gl)
 
 function drawScene(gl, programInfo, texture)
 {
-	if (modelStore[currentModel] === undefined) return;
+	if (modelStore[getCurrentModel()] === undefined) return;
 
 	gl.clearColor(...CLEAR_COLOR);
 	gl.clearDepth(1.0);
@@ -264,83 +264,88 @@ function loadOBJ(raw)
 	{
 		const tokens = lines[i].split(' ');
 
-		switch (tokens[0])
+		if (!lines[i].trim().startsWith('#'))
 		{
-			case 'o': { // Name
-				// Create a new OBJModel object and set currObj as a reference to it
-				if (currObj.name !== '')
-				{
-					normalizeIndices(currObj);
-					objs.push(currObj);
+			switch (tokens[0])
+			{
+				case 'o': { // Name
+					// Create a new OBJModel object and set currObj as a reference to it
+					if (currObj.name !== '')
+					{
+						normalizeIndices(currObj);
+						objs.push(currObj);
+					}
+					currObj = new OBJModel();
+					currObj.name = tokens.slice(1).join(' ').trim();
+					break;
 				}
-				currObj = new OBJModel();
-				currObj.name = tokens.slice(1).join(' ').trim();
-				break;
-			}
-			case 'v': { // Vertex Position
-				const pos = [];
-				tokens.slice(1).forEach((value) => {
-					pos.push(parseFloat(value.trim()));
-				});
-				positions.push(vec3.fromValues(...pos));
-				break;
-			}
-			case 'vn': { // Vertex Normal
-				const n = [];
-				tokens.slice(1).forEach((value) => {
-					n.push(parseFloat(value.trim()));
-				});
-				normals.push(vec3.fromValues(...n));
-				break;
-			}
-			case 'vt': { // Vertex Texture Coords
-				const coords = [];
-				tokens.slice(1).forEach((value) => {
-					coords.push(parseFloat(value.trim()));
-				});
-				texCoords.push(vec2.fromValues(...coords));
-				break;
-			}
-			case 'f': { // Face
-				const faceVertices = tokens.slice(1);
-				if (faceVertices.length === 3) {
-					// Convert the tokens to floats
-					/* eslint-disable-next-line no-loop-func */
-					faceVertices.forEach((attribString) => {
-						// Parse the indices
-						const attribs = [];
-						const splitAttribString = attribString.trim().split('/');
-						splitAttribString.forEach((value) => {
-							// Subtract 1 because WebGL indices are 0-based while objs are 1-based
-							attribs.push(parseInt(value, 10) - 1);
-						});
-
-						// For each set of indexed attributes, retrieve their original values and assign each unique set an index.
-						// If we've already indexed this set of attributes
-						if (attribString in indexDict) {
-							combinedIndex = indexDict[attribString]; // Get the existing index
-						}
-						else // Otherwise we need to index it
-						{
-							nextIndex++;
-							indexDict[attribString] = nextIndex;
-							combinedIndex = nextIndex;
-							currObj.positions.push(positions[attribs[0]]);
-							currObj.texCoords.push(Number.isNaN(attribs[1]) ? DEFAULT_TEXCOORD : texCoords[attribs[1]]);
-							currObj.normals.push(Number.isNaN(attribs[2]) ? DEFAULT_NORMAL : normals[attribs[2]]);
-						}
-						currObj.indices.push(combinedIndex); // Add this index to the index array
+				case 'v': { // Vertex Position
+					const pos = [];
+					tokens.slice(1).forEach((value) => {
+						pos.push(parseFloat(value.trim()));
 					});
+					positions.push(vec3.fromValues(...pos));
+					break;
 				}
-				else
-				{
-					console.warn(`Model '${currObj.name}' could not be loaded because it contains non-triangular faces.`);
-					// TODO: Triangulate faces automatically
+				case 'vn': { // Vertex Normal
+					const n = [];
+					tokens.slice(1).forEach((value) => {
+						n.push(parseFloat(value.trim()));
+					});
+					normals.push(vec3.fromValues(...n));
+					break;
 				}
-				break;
+				case 'vt': { // Vertex Texture Coords
+					const coords = [];
+					tokens.slice(1).forEach((value) => {
+						coords.push(parseFloat(value.trim()));
+					});
+					texCoords.push(vec2.fromValues(...coords));
+					break;
+				}
+				case 'f': { // Face
+					const faceVertices = tokens.slice(1);
+					if (faceVertices.length === 3) {
+						// Convert the tokens to floats
+						/* eslint-disable-next-line no-loop-func */
+						faceVertices.forEach((attribString) => {
+							// Parse the indices
+							const attribs = [];
+							const splitAttribString = attribString.trim().split('/');
+							splitAttribString.forEach((value) => {
+								// Subtract 1 because WebGL indices are 0-based while objs are 1-based
+								attribs.push(parseInt(value, 10) - 1);
+							});
+
+							// For each set of indexed attributes, retrieve their original values and assign each unique set an index.
+							// If we've already indexed this set of attributes
+							if (attribString in indexDict) {
+								combinedIndex = indexDict[attribString]; // Get the existing index
+							}
+							else // Otherwise we need to index it
+							{
+								nextIndex++;
+								indexDict[attribString] = nextIndex;
+								combinedIndex = nextIndex;
+								currObj.positions.push(positions[attribs[0]]);
+								currObj.texCoords.push(Number.isNaN(attribs[1]) ? DEFAULT_TEXCOORD : texCoords[attribs[1]]);
+								currObj.normals.push(Number.isNaN(attribs[2]) ? DEFAULT_NORMAL : normals[attribs[2]]);
+							}
+							currObj.indices.push(combinedIndex); // Add this index to the index array
+						});
+					}
+					else
+					{
+						console.warn(`Model '${currObj.name}' could not be loaded because it contains non-triangular faces.`);
+						// TODO: Triangulate faces automatically
+					}
+					break;
+				}
+				default: {
+					console.warn(`Unable to parse .obj file: unknown element token '${tokens[0]}'`);
+					break;
+				}
 			}
-			default:
-				throw new Error(`Unable to parse .obj file: unknown element token '${tokens[0]}'`);
 		}
 	}
 
