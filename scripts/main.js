@@ -1,21 +1,28 @@
 const CLEAR_COLOR = vec4.fromValues(0.3, 0.3, 0.9, 1.0);
 const DEFAULT_MODEL_NAME = 'Cube';
+const VERTEX_COMPONENTS_LENGTH = 8;
 const modelStore = [];
 let currentStage = {};
 
 // #region Objects/Classes
 
 // Stores data relating to the position, rotation and scale of an actor in a stage
+/**
+ *
+ * @param {vec3} translation
+ * @param {quat} rotation
+ * @param {vec3} scale
+ */
 function Transform(translation, rotation, scale)
 {
 	this.translation = translation || vec3.create();
 	this.rotation = rotation || quat.create();
-	this.scale = scale || vec3.create();
+	this.scale = scale || vec3.fromValues(1, 1, 1);
 	this.modelMatrix = mat4.create();
 
 	this.getModelMatrix = () => { // eslint-disable-line brace-style
 		mat4.fromRotationTranslationScale(this.modelMatrix, this.rotation, this.translation, this.scale);
-		return this.getModelMatrixmodelMatrix;
+		return this.modelMatrix;
 	};
 }
 
@@ -26,6 +33,11 @@ function StageActor(name, modelName)
 	this.modelName = modelName || DEFAULT_MODEL_NAME;
 	this.transform = new Transform();
 
+	this.update = (deltaTime) => {
+		// TODO eval() from externally loaded script
+		quat.rotateY(this.transform.rotation, this.transform.rotation, deltaTime);
+	};
+
 	// Returns the vertices of this actor's model, transformed by the actor's translation, rotation and scale
 	this.getVertices = () => { // eslint-disable-line brace-style
 		if (modelStore[this.modelName] === undefined)
@@ -33,7 +45,7 @@ function StageActor(name, modelName)
 			console.error(`Attempted to get vertices of non-loaded model '${this.modelName}'.`);
 			return [];
 		}
-		return modelStore[this.modelName].getVertices(this.transform.modelMatrix);
+		return modelStore[this.modelName].getVertices(this.transform.getModelMatrix());
 	};
 
 	this.getIndices = () => { // eslint-disable-line brace-style
@@ -53,6 +65,10 @@ function Stage(name, actors)
 	this.actors = actors || [];
 	this.actors.camera = new StageActor('camera', DEFAULT_MODEL_NAME);
 
+	this.update = (deltaTime) => {
+		actors.forEach(actor => actor.update(deltaTime));
+	};
+
 	this.getVertices = () => { // eslint-disable-line brace-style
 		const stageVertices = [];
 		actors.forEach((actor) => { // eslint-disable-line brace-style
@@ -68,7 +84,7 @@ function Stage(name, actors)
 		// eslint-disable-next-line brace-style
 		actors.forEach((actor) => {
 			const actorIndices = actor.getIndices().map(value => value + lastIndex);
-			lastIndex = actor.getVertices().length;
+			lastIndex = actor.getVertices().length / VERTEX_COMPONENTS_LENGTH;
 			stageIndices.push(...actorIndices);
 		});
 		return stageIndices;
@@ -158,8 +174,8 @@ function drawScene(gl, programInfo, texture)
 	// vertexposition attribute
 	{
 		gl.bindBuffer(gl.ARRAY_BUFFER, buffers.vertices);
-		gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, GL_FLOAT_BYTES * 8, 0);
-		gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, 2, gl.FLOAT, false, GL_FLOAT_BYTES * 8, GL_FLOAT_BYTES * 3);
+		gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, GL_FLOAT_BYTES * VERTEX_COMPONENTS_LENGTH, 0);
+		gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, 2, gl.FLOAT, false, GL_FLOAT_BYTES * VERTEX_COMPONENTS_LENGTH, GL_FLOAT_BYTES * 3);
 
 		gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
 		gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
@@ -192,7 +208,6 @@ function drawScene(gl, programInfo, texture)
 	}
 }
 
-
 // #endregion
 
 // #region utilities
@@ -201,6 +216,7 @@ function isPowerOf2(value)
 {
 	return (value & (value - 1)) === 0;
 }
+
 function loadTexture(gl, url)
 {
 	const texture = gl.createTexture();
@@ -455,7 +471,8 @@ function main()
 				const timeSecs = timeMillis * 0.001; // convert to seconds
 				const deltaTime = timeSecs - lastFrameSec;
 				lastFrameSec = timeSecs;
-
+				
+				currentStage.update(deltaTime);
 				drawScene(gl, programInfo, texture);
 				requestAnimationFrame(render);
 			}
