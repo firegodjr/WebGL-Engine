@@ -6,16 +6,22 @@ let currentStage = {};
 // #region Objects/Classes
 
 // Stores data relating to the position, rotation and scale of an actor in a stage
+/**
+ *
+ * @param {vec3} translation
+ * @param {quat} rotation
+ * @param {vec3} scale
+ */
 function Transform(translation, rotation, scale)
 {
 	this.translation = translation || vec3.create();
 	this.rotation = rotation || quat.create();
-	this.scale = scale || vec3.create();
+	this.scale = scale || vec3.fromValues(1, 1, 1);
 	this.modelMatrix = mat4.create();
 
 	this.getModelMatrix = () => {
 		mat4.fromRotationTranslationScale(this.modelMatrix, this.rotation, this.translation, this.scale);
-		return this.getModelMatrixmodelMatrix;
+		return this.modelMatrix;
 	};
 }
 
@@ -26,6 +32,10 @@ function StageActor(name, modelName)
 	this.modelName = modelName || DEFAULT_MODEL_NAME;
 	this.transform = new Transform();
 
+	this.update = (deltaTime) => {
+		// TODO eval() from externally loaded script
+	};
+
 	// Returns the vertices of this actor's model, transformed by the actor's translation, rotation and scale
 	this.getVertices = () => {
 		if (modelStore[this.modelName] === undefined)
@@ -33,7 +43,7 @@ function StageActor(name, modelName)
 			console.error(`Attempted to get vertices of non-loaded model '${this.modelName}'.`);
 			return [];
 		}
-		return modelStore[this.modelName].getVertices(this.transform.modelMatrix);
+		return modelStore[this.modelName].getVertices(this.transform.getModelMatrix());
 	};
 
 	this.getIndices = () => {
@@ -52,6 +62,10 @@ function Stage(name, actors)
 	this.name = name || '';
 	this.actors = actors || [];
 	this.actors.camera = new StageActor('camera', DEFAULT_MODEL_NAME);
+
+	this.update = (deltaTime) => {
+		actors.forEach(actor => actor.update(deltaTime));
+	};
 
 	this.getVertices = () => {
 		const stageVertices = [];
@@ -189,7 +203,6 @@ function drawScene(gl, programInfo, texture)
 	}
 }
 
-
 // #endregion
 
 // #region utilities
@@ -198,6 +211,7 @@ function isPowerOf2(value)
 {
 	return (value & (value - 1)) === 0;
 }
+
 function loadTexture(gl, url)
 {
 	const texture = gl.createTexture();
@@ -435,6 +449,7 @@ function main()
 		const deltaTime = timeSecs - lastFrameSec;
 		lastFrameSec = timeSecs;
 
+		currentStage.update(deltaTime);
 		drawScene(gl, programInfo, texture);
 		requestAnimationFrame(render);
 	}
