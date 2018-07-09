@@ -7,60 +7,75 @@ const getCurrentModel = () => document.getElementById('modelSelect').value;
 // #region mainloop
 
 // #region Objects/Classes
+
+// Stores all data for a given stage, or worldspace
 function Stage(name, actors)
 {
-	this.name = name || '';
-	this.actors = actors || [];
+  this.name = name || "";
+  this.actors = actors || [];
 
-	this.getVertices = function getVertices()
-	{
+  this.getVertices = function()
+  {
 
-	};
+  }
+}
+
+// Stores data relating to the position, rotation and scale of an actor in a stage
+function Transform(translation, rotation, scale)
+{
+  this.translation = translation || new vec3();
+  this.rotation = rotation || new quat4();
+  this.scale = scale || new vec3();
+  this.modelMatrix = mat4.create();
+
+  this.getModelMatrix = function()
+  {
+    mat4.fromRotationTranslationScale(modelMatrix, this.rotation, this.translation, this.scale)
+    return modelMatrix;
+  }
 }
 
 function StageActor(name, modelName)
 {
-	this.name = name || '';
-	this.modelName = modelName || DEFAULT_MODEL_NAME;
-	this.translation = new vec3(); // eslint-disable-line new-cap
-	this.rotation = new quat4(); // eslint-disable-line new-cap
-	this.scale = new vec3(); // eslint-disable-line new-cap
-	this.modelMatrix = mat4.create();
+  this.name = name || "";
+  this.modelName = modelName || DEFAULT_MODEL_NAME;
+  this.transform = new Transform();
 
-	// Returns the vertices of this actor's model, transformed by the actor's translation, rotation and scale
-	this.getVertices = () => {
-		mat4.fromRotationTranslationScale(this.modelMatrix, this.rotation, this.translation, this.scale);
-		return modelStore[this.modelName].getVertices(this.modelMatrix);
-	};
+  // Returns the vertices of this actor's model, transformed by the actor's translation, rotation and scale
+  this.getVertices = function()
+  {
+    return modelStore[this.modelName].getVertices(this.transform.modelMatrix);
+  }
 }
 
 function OBJModel(name, positions, texCoords, normals, indices)
 {
-	this.name = name || '';
-	this.positions = positions || [];
-	this.texCoords = texCoords || [];
-	this.normals = normals || [];
-	this.indices = indices || [];
+  this.name = name || "";
+  this.positions = positions || [];
+  this.texCoords = texCoords || [];
+  this.normals = normals || [];
+  this.indices = indices || [];
 
-	// Returns the vertices of this model, transformed by the given model matrix
-	this.getVertices = (transMatrix) => {
-		const vertices = [];
-		const transformMatrix = transMatrix || mat4.create();
+  // Returns the vertices of this model, optionally transformed by the given model matrix
+  this.getVertices = function(modelMatrix)
+  {
+    let vertices = [];
+    modelMatrix = modelMatrix || mat4.create();
 
-		for (let i = 0; i < this.positions.length; ++i)
-		{
-			const transformedPosition = vec3.create();
-			vec3.transformMat4(transformedPosition, this.positions[i], transformMatrix);
-			vertices.push(
-				...transformedPosition,
-				...this.texCoords[i],
-				...this.normals[i]
-			);
-		}
+    for(let i = 0; i < this.positions.length; ++i)
+    {
+      let transformedPosition = vec3.create();
+      vec3.transformMat4(transformedPosition, this.positions[i], modelMatrix);
+      vertices.push(
+        ...transformedPosition, 
+        ...this.texCoords[i],
+        ...this.normals[i]);
+    }
 
-		return vertices;
-	};
+    return vertices;
+  }
 }
+
 // #endregion Objects/Classes
 
 function initBuffers(gl)
