@@ -1,7 +1,8 @@
 {
-	"recommendations": [
-        "dbaeumer.vscode-eslint",
-        "msjsdiag.debugger-for-chrome",
-        "ritwickdey.liveserver",
-	]
+        "recommendations": [
+                "dbaeumer.vscode-eslint",
+                "msjsdiag.debugger-for-chrome",
+                "ritwickdey.liveserver",
+                "slevesque.shader",
+        ]
 }

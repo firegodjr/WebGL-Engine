@@ -40,7 +40,7 @@ function Transform(translation, rotation, scale)
 	this.scaleY = (value) => { this.scale[1] *= value; };
 	this.scaleZ = (value) => { this.scale[2] *= value; };
 
-	this.getModelMatrix = () => {
+	this.getModelMatrix = () => { // eslint-disable-line brace-style
 		mat4.fromRotationTranslationScale(this.modelMatrix, this.rotation, this.translation, this.scale);
 		return this.modelMatrix;
 	};
@@ -59,7 +59,7 @@ function StageActor(name, modelName)
 	};
 
 	// Returns the vertices of this actor's model, transformed by the actor's translation, rotation and scale
-	this.getVertices = () => {
+	this.getVertices = () => { // eslint-disable-line brace-style
 		if (modelStore[this.modelName] === undefined)
 		{
 			console.error(`Attempted to get vertices of non-loaded model '${this.modelName}'.`);
@@ -68,7 +68,7 @@ function StageActor(name, modelName)
 		return modelStore[this.modelName].getVertices(this.transform.getModelMatrix());
 	};
 
-	this.getIndices = () => {
+	this.getIndices = () => { // eslint-disable-line brace-style
 		if (modelStore[this.modelName] === undefined)
 		{
 			console.error(`Attempted to get indices of non-loaded model '${this.modelName}'.`);
@@ -89,17 +89,19 @@ function Stage(name, actors)
 		actors.forEach(actor => actor.update(deltaTime, elapsedTime));
 	};
 
-	this.getVertices = () => {
+	this.getVertices = () => { // eslint-disable-line brace-style
 		const stageVertices = [];
-		actors.forEach((actor) => {
+		actors.forEach((actor) => { // eslint-disable-line brace-style
 			stageVertices.push(...actor.getVertices());
 		});
 		return stageVertices;
 	};
 
+	// eslint-disable-next-line brace-style
 	this.getIndices = () => {
 		const stageIndices = [];
 		let lastIndex = 0;
+		// eslint-disable-next-line brace-style
 		actors.forEach((actor) => {
 			const actorIndices = actor.getIndices().map(value => value + lastIndex);
 			lastIndex = actor.getVertices().length / VERTEX_COMPONENTS_LENGTH;
@@ -118,7 +120,7 @@ function OBJModel(name, positions, texCoords, normals, indices)
 	this.indices = indices || [];
 
 	// Returns the vertices of this model, optionally transformed by the given model matrix
-	this.getVertices = (modelMatrix) => {
+	this.getVertices = (modelMatrix) => { // eslint-disable-line brace-style
 		const vertices = [];
 		modelMatrix = modelMatrix || mat4.create();
 
@@ -143,6 +145,7 @@ function OBJModel(name, positions, texCoords, normals, indices)
 /**
  * Creates and initializes the vertex and index buffers
  * @param {WebGLRenderingContext} gl
+ * @returns { vertices: WebGLBuffer, indices: WebGLBuffer, certexCount: number}
  * @returns vertexBuffer id, indexBuffer id, and vertex count
  */
 function initBuffers(gl)
@@ -219,7 +222,7 @@ function drawScene(gl, programInfo, texture)
 
 	{
 		const offset = 0;
-		const vertexCount = buffers.vertexCount;
+		const { vertexCount } = buffers;
 		const type = gl.UNSIGNED_SHORT;
 		gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
 	}
@@ -295,19 +298,21 @@ function attachInputListeners(gl)
 	window.onresize = function onWindowResize() { refreshCanvasSize(gl); };
 }
 
-function requestContent(filepath, callback)
+/**
+ * Retrives a file from the web server. Rejects on non-Response.ok, and returns the body.
+ * @param {string} filepath
+ * @returns {Promise<string>}
+ */
+async function safeFetch(filepath)
 {
-	const request = new XMLHttpRequest();
-	request.onreadystatechange = () => {
-		if (request.readyState === 4)
-		{
-			if (request.status === 0 || request.status === 200)
-			{ callback(request.responseText); }
-		}
-	};
-
-	request.open('GET', filepath, true);
-	request.send();
+	return fetch(filepath)
+		.then((resp) => { // eslint-disable-line brace-style
+			if (!resp.ok)
+			{
+				throw new Error(`Unsuccessful fetch of resource '${filepath}'`);
+			}
+			return resp.text();
+		});
 }
 
 
@@ -321,7 +326,13 @@ function normalizeIndices(obj)
 	}
 }
 
-function loadOBJ(raw)
+/**
+ * Accepts a raw string of a .obj file and parses it.
+ * @param {string} filename
+ * @param {string} raw
+ * @returns {OBJModel[]}
+ */
+function loadOBJ(filename, raw)
 {
 	// const DEFAULT_POSITION = [0, 0, 0];
 	const DEFAULT_TEXCOORD = [0, 0];
@@ -340,8 +351,9 @@ function loadOBJ(raw)
 	for (let i = 0; i < lines.length; ++i)
 	{
 		const tokens = lines[i].split(' ');
+		const trimmed = lines[i];
 
-		if (!lines[i].trim().startsWith('#'))
+		if (trimmed.length !== 0 && !trimmed.startsWith('#'))
 		{
 			switch (tokens[0])
 			{
@@ -358,7 +370,7 @@ function loadOBJ(raw)
 				}
 				case 'v': { // Vertex Position
 					const pos = [];
-					tokens.slice(1).forEach((value) => {
+					tokens.slice(1).forEach((value) => { // eslint-disable-line brace-style
 						pos.push(parseFloat(value.trim()));
 					});
 					positions.push(vec3.fromValues(...pos));
@@ -366,7 +378,7 @@ function loadOBJ(raw)
 				}
 				case 'vn': { // Vertex Normal
 					const n = [];
-					tokens.slice(1).forEach((value) => {
+					tokens.slice(1).forEach((value) => { // eslint-disable-line brace-style
 						n.push(parseFloat(value.trim()));
 					});
 					normals.push(vec3.fromValues(...n));
@@ -374,7 +386,7 @@ function loadOBJ(raw)
 				}
 				case 'vt': { // Vertex Texture Coords
 					const coords = [];
-					tokens.slice(1).forEach((value) => {
+					tokens.slice(1).forEach((value) => { // eslint-disable-line brace-style
 						coords.push(parseFloat(value.trim()));
 					});
 					texCoords.push(vec2.fromValues(...coords));
@@ -382,21 +394,23 @@ function loadOBJ(raw)
 				}
 				case 'f': { // Face
 					const faceVertices = tokens.slice(1);
-					if (faceVertices.length === 3) {
+					if (faceVertices.length === 3)
+					{
 						// Convert the tokens to floats
 						/* eslint-disable-next-line no-loop-func */
-						faceVertices.forEach((attribString) => {
+						faceVertices.forEach((attribString) => { // eslint-disable-line brace-style
 							// Parse the indices
 							const attribs = [];
 							const splitAttribString = attribString.trim().split('/');
-							splitAttribString.forEach((value) => {
+							splitAttribString.forEach((value) => { // eslint-disable-line brace-style
 								// Subtract 1 because WebGL indices are 0-based while objs are 1-based
 								attribs.push(parseInt(value, 10) - 1);
 							});
 
 							// For each set of indexed attributes, retrieve their original values and assign each unique set an index.
 							// If we've already indexed this set of attributes
-							if (attribString in indexDict) {
+							if (attribString in indexDict)
+							{
 								combinedIndex = indexDict[attribString]; // Get the existing index
 							}
 							else // Otherwise we need to index it
@@ -413,13 +427,13 @@ function loadOBJ(raw)
 					}
 					else
 					{
-						console.warn(`Model '${currObj.name}' could not be loaded because it contains non-triangular faces.`);
+						console.warn(`[.obj parse] ${filename}:${i}: can't load non-triangular faces (${trimmed})`);
 						// TODO: Triangulate faces automatically
 					}
 					break;
 				}
 				default: {
-					console.warn(`.obj file: unknown element token '${tokens[0]}'`);
+					console.warn(`[.obj parse] ${filename}:${i}: unknown element token '${tokens[0]}'`);
 					break;
 				}
 			}
@@ -432,10 +446,15 @@ function loadOBJ(raw)
 	return objs;
 }
 
-function loadOBJToModelStore(raw)
+/**
+ * Parses `raw` as a .obj file and stores it in the model store using the name in the model.
+ * @param {string} raw
+ * @returns {void}
+ */
+function loadOBJToModelStore(filename, raw)
 {
-	const objs = loadOBJ(raw);
-	objs.forEach((obj) => {
+	const objs = loadOBJ(filename, raw);
+	objs.forEach((obj) => { // eslint-disable-line brace-style
 		modelStore[obj.name] = obj;
 	});
 }
@@ -449,34 +468,37 @@ function main()
 
 	if (!gl)
 	{
-		alert('Unable to initialize WebGL. Your browser or machine may not support it.');
+		console.error('Unable to initialize WebGL. Your browser or machine may not support it.');
 		return;
 	}
 
 	// Load a model into memory
-	requestContent('models/barrel_ornate.obj', loadOBJToModelStore);
-	requestContent('models/cube.obj', loadOBJToModelStore);
+	['models/barrel_ornate.obj', 'models/cube.obj']
+		.forEach(name => safeFetch(name).then(v => loadOBJToModelStore(name, v)));
 
-	const shaderProgram = initDefaultShaderProgram(gl);
-	const programInfo = getProgramInfo(gl, shaderProgram);
 	const texture = loadTexture(gl, 'firefox.png');
 
-	attachInputListeners(gl);
-	refreshCanvasSize(gl);
+	initDefaultShaderProgram(gl)
+		.then((prog) => { // eslint-disable-line brace-style
+			const programInfo = getProgramInfo(gl, prog);
 
-	let lastFrameSec = 0;
-	function render(timeMillis)
-	{
-		const timeSecs = timeMillis * 0.001; // convert to seconds
-		const deltaTime = timeSecs - lastFrameSec;
-		lastFrameSec = timeSecs;
+			attachInputListeners(gl);
+			refreshCanvasSize(gl);
 
-		currentStage.update(deltaTime, timeSecs);
-		drawScene(gl, programInfo, texture);
-		requestAnimationFrame(render);
-	}
+			let lastFrameSec = 0;
+			function render(timeMillis)
+			{
+				const timeSecs = timeMillis * 0.001; // convert to seconds
+				const deltaTime = timeSecs - lastFrameSec;
+				lastFrameSec = timeSecs;
 
-	requestAnimationFrame(render);
+				currentStage.update(deltaTime, timeSecs);
+				drawScene(gl, programInfo, texture);
+				requestAnimationFrame(render);
+			}
+
+			requestAnimationFrame(render);
+		});
 }
 
 const testActor = new StageActor('Test Actor', 'Cube');
