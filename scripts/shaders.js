@@ -96,10 +96,12 @@ function getProgramInfo(gl, shaderProgram)
 		attribLocations: {
 			vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
 			textureCoord: gl.getAttribLocation(shaderProgram, 'aTextureCoord'),
+			vertexNormal: gl.getAttribLocation(shaderProgram, 'aVertexNormal'),
 		},
 		uniformLocations: {
 			projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
 			modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
+			normalMatrix: gl.getUniformLocation(shaderProgram, 'uNormalMatrix'),
 			uSampler: gl.getUniformLocation(shaderProgram, 'uSampler'),
 		},
 	};

@@ -1,14 +1,16 @@
 const CLEAR_COLOR = vec4.fromValues(0.3, 0.3, 0.9, 1.0);
 const DEFAULT_MODEL_NAME = 'Cube';
-const VERTEX_COMPONENTS_LENGTH = 8;
+const ATTRIB_POS_LENGTH = 3;
+const ATTRIB_TEXCOORD_LENGTH = 2;
+const ATTRIB_NORMAL_LENGTH = 3;
+const VERTEX_COMPONENTS_LENGTH = ATTRIB_POS_LENGTH + ATTRIB_TEXCOORD_LENGTH + ATTRIB_NORMAL_LENGTH;
 const modelStore = [];
 let currentStage = {};
 
 // #region Objects/Classes
 
-// Stores data relating to the position, rotation and scale of an actor in a stage
 /**
- *
+ * Stores data relating to the position, rotation and scale of an actor in a stage
  * @param {vec3} translation
  * @param {quat} rotation
  * @param {vec3} scale
@@ -46,7 +48,10 @@ function Transform(translation, rotation, scale)
 	};
 }
 
-// An entity that exists in worldspace
+/** An entity that exists in worldspace
+ * @param {string} name The actor's name
+ * @param {string} modelName The name of the model this actor uses
+ */
 function StageActor(name, modelName)
 {
 	this.name = name || '';
@@ -78,39 +83,83 @@ function StageActor(name, modelName)
 	};
 }
 
-// Stores all data for a given stage, or worldspace
-function Stage(name, actors)
+/**
+ * Stores all data for a given 3d worldspace, including setpieces and actors
+ * @param {string} name the name of this stage
+ * @param {Array<StageActor>} setpieces actors that don't update, used as scenery or terrain
+ * @param {Array<StageActor>} actors world entities that update every frame
+ */
+function Stage(name, setpieces, actors)
 {
 	this.name = name || '';
+	this.setpieces = setpieces || [];
 	this.actors = actors || [];
 	this.actors.camera = new StageActor('camera', DEFAULT_MODEL_NAME);
 
 	this.update = (deltaTime, elapsedTime) => {
-		actors.forEach(actor => actor.update(deltaTime, elapsedTime));
+		this.actors.forEach(actor => actor.update(deltaTime, elapsedTime));
 	};
 
-	this.getVertices = () => {
+	/**
+	 * Gets an array of interleaved vertex attribs for all setpieces
+	 * @returns {Float32Array}
+	 */
+	this.getSetpieceVertices = () => {
 		const stageVertices = [];
-		actors.forEach((actor) => {
+		this.setpieces.forEach((actor) => {
 			stageVertices.push(...actor.getVertices());
 		});
 		return stageVertices;
 	};
 
-	// eslint-disable-next-line brace-style
-	this.getIndices = () => {
+	/**
+	 * Gets an array of indices for all setpieces
+	 * @returns {Int16Array}
+	 */
+	this.getMergedSetpieceIndices = () => {
 		const stageIndices = [];
 		let lastIndex = 0;
-		// eslint-disable-next-line brace-style
-		actors.forEach((actor) => {
+
+		this.setpieces.forEach((actor) => {
 			const actorIndices = actor.getIndices().map(value => value + lastIndex);
 			lastIndex = actor.getVertices().length / VERTEX_COMPONENTS_LENGTH;
 			stageIndices.push(...actorIndices);
 		});
 		return stageIndices;
 	};
+
+	/**
+	 * Gets an array of interleaved vertex attrib arrays for each actor
+	 * @returns {Array<Float32Array>}
+	 */
+	this.getActorVertices = () => {
+		const actorVertices = [];
+		this.actors.forEach((actor) => {
+			actorVertices.push(actor.getVertices());
+		});
+		return actorVertices;
+	};
+
+	/**
+	 * Gets an array of indices for each actor
+	 */
+	this.getActorIndices = () => {
+		const actorIndices = [];
+		this.actors.forEach((actor) => {
+			actorIndices.push(actor.getIndices());
+		});
+		return actorIndices;
+	};
 }
 
+/**
+ * Represents an indexed model loaded from an OBJ file
+ * @param {string} name
+ * @param {Array<Array>} positions
+ * @param {Array<Array>} texCoords
+ * @param {Array<Array>} normals
+ * @param {Int16Array} indices
+ */
 function OBJModel(name, positions, texCoords, normals, indices)
 {
 	this.name = name || '';
@@ -150,12 +199,12 @@ function OBJModel(name, positions, texCoords, normals, indices)
  */
 function initBuffers(gl)
 {
-	const vertices = currentStage.getVertices();
+	const vertices = currentStage.getSetpieceVertices();
 	const vertexBuffer = gl.createBuffer();
 	gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
 	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
-	const indices = currentStage.getIndices();
+	const indices = currentStage.getMergedSetpieceIndices();
 	const indexBuffer = gl.createBuffer();
 	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
 	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
@@ -163,6 +212,12 @@ function initBuffers(gl)
 	return { vertices: vertexBuffer, indices: indexBuffer, vertexCount: indices.length };
 }
 
+/**
+ * Handles matrix initialization and all draw calls
+ * @param {WebGLRenderingContext} gl
+ * @param {object} programInfo
+ * @param {number} texture
+ */
 function drawScene(gl, programInfo, texture)
 {
 	gl.clearColor(...CLEAR_COLOR);
@@ -189,16 +244,23 @@ function drawScene(gl, programInfo, texture)
 	const modelViewMatrix = mat4.create();
 	mat4.translate(modelViewMatrix, modelViewMatrix, [-0.0, -3.0, -20.0]);
 
+	// Create the normal matrix for transforming normal positions
+	const normalMatrix = mat4.create();
+	mat4.invert(normalMatrix, modelViewMatrix);
+	mat4.transpose(normalMatrix, normalMatrix);
+
 	const GL_FLOAT_BYTES = 4;
 	// Tell Webgl how to pull out the positions from the position buffer into the
 	// vertexposition attribute
 	{
 		gl.bindBuffer(gl.ARRAY_BUFFER, buffers.vertices);
-		gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, GL_FLOAT_BYTES * VERTEX_COMPONENTS_LENGTH, 0);
-		gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, 2, gl.FLOAT, false, GL_FLOAT_BYTES * VERTEX_COMPONENTS_LENGTH, GL_FLOAT_BYTES * 3);
+		gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, ATTRIB_POS_LENGTH, gl.FLOAT, false, GL_FLOAT_BYTES * VERTEX_COMPONENTS_LENGTH, 0);
+		gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, ATTRIB_TEXCOORD_LENGTH, gl.FLOAT, false, GL_FLOAT_BYTES * VERTEX_COMPONENTS_LENGTH, GL_FLOAT_BYTES * ATTRIB_POS_LENGTH);
+		gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, ATTRIB_NORMAL_LENGTH, gl.FLOAT, false, GL_FLOAT_BYTES * VERTEX_COMPONENTS_LENGTH, GL_FLOAT_BYTES * (ATTRIB_POS_LENGTH + ATTRIB_TEXCOORD_LENGTH));
 
 		gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
 		gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+		gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
 	}
 
 	// Tell WebGL to use our program when drawing
@@ -207,6 +269,7 @@ function drawScene(gl, programInfo, texture)
 	// Set the shader uniforms
 	gl.uniformMatrix4fv(programInfo.uniformLocations.modelViewMatrix, false, modelViewMatrix);
 	gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
+	gl.uniformMatrix4fv(programInfo.uniformLocations.normalMatrix, false, normalMatrix);
 
 	// Tell WebGL which indices to use to index the vertices
 	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
@@ -502,6 +565,6 @@ function main()
 }
 
 const testActor = new StageActor('Test Actor', 'Cube');
-currentStage = new Stage('Main', [testActor]);
+currentStage = new Stage('Main', [], [testActor]);
 
 main();
