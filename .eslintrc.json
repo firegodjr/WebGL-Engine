@@ -11,8 +11,18 @@
 		"vec4": true,
 		"quat": true,
 		"modelStore": true,
+		"currentStage": true,
 		"initDefaultShaderProgram": true,
-		"getProgramInfo": true
+		"getProgramInfo": true,
+		"Transform": true,
+		"Stage": true,
+		"StageActor": true,
+		"OBJModel": true,
+		"DEFAULT_MODEL_NAME": true,
+		"ATTRIB_POS_LENGTH": true,
+		"ATTRIB_TEXCOORD_LENGTH": true,
+		"ATTRIB_NORMAL_LENGTH": true,
+		"VERTEX_COMPONENTS_LENGTH": true
 	},
 	"parserOptions": {
 		"ecmaVersion": 2017
@@ -40,7 +50,8 @@
 		"prefer-destructuring": "warn",
 		"comma-dangle": ["warn", "only-multiline"],
 		"implicit-arrow-linebreak": ["warn", "beside"],
-		"lines-between-class-members": ["off"]
+		"lines-between-class-members": ["off"],
+		"no-underscore-dangle": ["off"]
 	},
 	"root": true
 	
