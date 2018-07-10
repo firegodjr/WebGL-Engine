@@ -39,7 +39,8 @@
 		"max-len": "off",
 		"prefer-destructuring": "warn",
 		"comma-dangle": ["warn", "only-multiline"],
-		"implicit-arrow-linebreak": ["warn", "beside"]
+		"implicit-arrow-linebreak": ["warn", "beside"],
+		"lines-between-class-members": ["off"]
 	},
 	"root": true
 	

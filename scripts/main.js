@@ -4,174 +4,194 @@ const ATTRIB_POS_LENGTH = 3;
 const ATTRIB_TEXCOORD_LENGTH = 2;
 const ATTRIB_NORMAL_LENGTH = 3;
 const VERTEX_COMPONENTS_LENGTH = ATTRIB_POS_LENGTH + ATTRIB_TEXCOORD_LENGTH + ATTRIB_NORMAL_LENGTH;
-const modelStore = [];
+/** @type {{ [s: string]: OBJModel }  */
+const modelStore = {};
 let currentStage = {};
 
 // #region Objects/Classes
 
-/**
- * Stores data relating to the position, rotation and scale of an actor in a stage
- * @param {vec3} translation
- * @param {quat} rotation
- * @param {vec3} scale
- */
-function Transform(translation, rotation, scale)
+/** Stores data relating to the position, rotation and scale of an actor in a stage */
+class Transform
 {
-	this.translation = translation || vec3.create();
-	this.rotation = rotation || quat.create();
-	this.scale = scale || vec3.fromValues(1, 1, 1);
-	this.modelMatrix = mat4.create();
+	/**
+	 * Stores data relating to the position, rotation and scale of an actor in a stage
+	 * @param {vec3} translation (default: no translation)
+	 * @param {quat} rotation (default: no rotation)
+	 * @param {vec3} scale (default: 1x scale)
+	 */
+	constructor(translation = vec3.create(), rotation = quat.create(), scale = vec3.fromValues(1, 1, 1))
+	{
+		this.translation = translation;
+		this.rotation = rotation;
+		this.scale = scale;
+		this.modelMatrix = mat4.create();
+	}
 
-	this.setPosX = (value) => { this.translation[0] = value; };
-	this.setPosY = (value) => { this.translation[1] = value; };
-	this.setPosZ = (value) => { this.translation[2] = value; };
-	this.setRotationX = (value) => { quat.rotateX(this.rotation, quat.create(), value); };
-	this.setRotationY = (value) => { quat.rotateY(this.rotation, quat.create(), value); };
-	this.setRotationZ = (value) => { quat.rotateZ(this.rotation, quat.create(), value); };
-	this.setScaleX = (value) => { this.scale[0] = value; };
-	this.setScaleY = (value) => { this.scale[1] = value; };
-	this.setScaleZ = (value) => { this.scale[2] = value; };
+	/** @type {number[]} */
+	get modelMatrix()
+	{
+		mat4.fromRotationTranslationScale(this.modelMatrix, this.rotation, this.translation, this.scale);
+		return this.modelMatrix;
+	}
+
+
+	/** @type {number} */ get posX() { return this.translation[0]; }
+	/** @type {number} */ get posY() { return this.translation[1]; }
+	/** @type {number} */ get posZ() { return this.translation[2]; }
+
+	/** @type {number} */ set posX(value) { this.translation[0] = value; }
+	/** @type {number} */ set posY(value) { this.translation[1] = value; }
+	/** @type {number} */ set posZ(value) { this.translation[2] = value; }
+
+	// Can these be replaced with 'set rotationX(value) {this.rotation = value}' ?
+	/** @type {number} */ set rotationX(value) { quat.rotateX(this.rotation, quat.create(), value); }
+	/** @type {number} */ set rotationY(value) { quat.rotateY(this.rotation, quat.create(), value); }
+	/** @type {number} */ set rotationZ(value) { quat.rotateZ(this.rotation, quat.create(), value); }
+
+	/** @type {number} */ get scaleX() { return this.scale[0]; }
+	/** @type {number} */ get scaleY() { return this.scale[1]; }
+	/** @type {number} */ get scaleZ() { return this.scale[2]; }
+
+	/** @type {number} */ set scaleX(value) { this.scale[0] = value; }
+	/** @type {number} */ set scaleY(value) { this.scale[1] = value; }
+	/** @type {number} */ set scaleZ(value) { this.scale[2] = value; }
+
+	/* Unneeded? (Just use the regular getters/setters at the call site.)
+	let t = new Translation();
+	t.posX += myValue;
 
 	this.translateX = (value) => { this.translation[0] += value; };
 	this.translateY = (value) => { this.translation[1] += value; };
-	this.translateZ = (value) => { this.translation[2] += value; };
-	this.rotateX = (value) => { quat.rotateX(this.rotation, this.rotation, value); };
-	this.rotateY = (value) => { quat.rotateY(this.rotation, this.rotation, value); };
-	this.rotateZ = (value) => { quat.rotateZ(this.rotation, this.rotation, value); };
-	this.scaleX = (value) => { this.scale[0] *= value; };
-	this.scaleY = (value) => { this.scale[1] *= value; };
-	this.scaleZ = (value) => { this.scale[2] *= value; };
+	this.translateZ = (value) => { this.translation[2] += value; }; */
 
-	this.getModelMatrix = () => {
-		mat4.fromRotationTranslationScale(this.modelMatrix, this.rotation, this.translation, this.scale);
-		return this.modelMatrix;
-	};
+	rotateX(value) { quat.rotateX(this.rotation, this.rotation, value); }
+	rotateY(value) { quat.rotateY(this.rotation, this.rotation, value); }
+	rotateZ(value) { quat.rotateZ(this.rotation, this.rotation, value); }
 }
 
-/** An entity that exists in worldspace
- * @param {string} name The actor's name
- * @param {string} modelName The name of the model this actor uses
- */
-function StageActor(name, modelName)
+/** An entity that exists in worldspace */
+class StageActor
 {
-	this.name = name || '';
-	this.modelName = modelName || DEFAULT_MODEL_NAME;
-	this.transform = new Transform();
+	/**
+	 * @param {string} name
+	 * @param {string} modelName
+	 */
+	constructor(name = '', modelName = DEFAULT_MODEL_NAME)
+	{
+		this.name = name;
+		this.modelName = modelName;
+		this.transform = new Transform();
+	}
 
-	this.update = (deltaTime, elapsedTime) => {
+	update(deltaTime, elapsedTime)
+	{
 		// TODO eval() from externally loaded script
+		// note: *never* use 'eval'
 		this.transform.rotateY(deltaTime);
-	};
+	}
 
-	// Returns the vertices of this actor's model, transformed by the actor's translation, rotation and scale
-	this.getVertices = () => {
+	/** Returns the vertices of this actor's model, transformed by the actor's translation, rotation and scale */
+	get vertices()
+	{
 		if (modelStore[this.modelName] === undefined)
 		{
-			console.error(`Attempted to get vertices of non-loaded model '${this.modelName}'.`);
-			return [];
+			throw new Error(`Attempted to get vertices of non-loaded model '${this.modelName}'.`);
 		}
-		return modelStore[this.modelName].getVertices(this.transform.getModelMatrix());
-	};
+		return modelStore[this.modelName].transformedVertices(this.transform.modelMatrix);
+	}
 
-	this.getIndices = () => {
+	get indices()
+	{
 		if (modelStore[this.modelName] === undefined)
 		{
 			console.error(`Attempted to get indices of non-loaded model '${this.modelName}'.`);
 			return [];
 		}
-		return modelStore[this.modelName].getIndices();
-	};
+		return modelStore[this.modelName].indices();
+	}
 }
 
-/**
- * Stores all data for a given 3d worldspace, including setpieces and actors
- * @param {string} name the name of this stage
- * @param {Array<StageActor>} setpieces actors that don't update, used as scenery or terrain
- * @param {Array<StageActor>} actors world entities that update every frame
- */
-function Stage(name, setpieces, actors)
+
+class Stage
 {
-	this.name = name || '';
-	this.setpieces = setpieces || [];
-	this.actors = actors || [];
-	this.actors.camera = new StageActor('camera', DEFAULT_MODEL_NAME);
-
-	this.update = (deltaTime, elapsedTime) => {
-		this.actors.forEach(actor => actor.update(deltaTime, elapsedTime));
-	};
-
 	/**
-	 * Gets an array of interleaved vertex attribs for all setpieces
-	 * @returns {Float32Array}
+	 * @param {string} name
+	 * @param {StageActor[]} actors
 	 */
-	this.getSetpieceVertices = () => {
+	constructor(name = '', setpieces = [], actors = [])
+	{
+		/** @type {string} */
+		this.name = name;
+		/** @type {{ [n: number]: StageActor} */
+		this.setpieces = setpieces;
+		/** @type {{ [n: number]: StageActor, camera: StageActor } */
+		this.actors = actors;
+		this.actors.camera = new StageActor('camera', DEFAULT_MODEL_NAME);
+	}
+
+	update(deltaTime, elapsedTime)
+	{
+		this.actors.forEach(actor => actor.update(deltaTime, elapsedTime));
+	}
+
+	/** @type {number[]} */
+	get setVertices()
+	{
 		const stageVertices = [];
-		this.setpieces.forEach((actor) => {
-			stageVertices.push(...actor.getVertices());
+		this.setpieces.forEach((/** @type {StageActor} */ actor) => {
+			stageVertices.push(...actor.vertices());
 		});
 		return stageVertices;
-	};
-
-	/**
-	 * Gets an array of indices for all setpieces
-	 * @returns {Int16Array}
-	 */
-	this.getMergedSetpieceIndices = () => {
+	}
+	get setIndices()
+	{
 		const stageIndices = [];
 		let lastIndex = 0;
-
 		this.setpieces.forEach((actor) => {
-			const actorIndices = actor.getIndices().map(value => value + lastIndex);
-			lastIndex = actor.getVertices().length / VERTEX_COMPONENTS_LENGTH;
-			stageIndices.push(...actorIndices);
+			const setpieceIndices = actor.indices.map(value => value + lastIndex);
+			lastIndex = actor.vertices.length / VERTEX_COMPONENTS_LENGTH;
+			stageIndices.push(...setpieceIndices);
 		});
 		return stageIndices;
-	};
+	}
 
-	/**
-	 * Gets an array of interleaved vertex attrib arrays for each actor
-	 * @returns {Array<Float32Array>}
-	 */
-	this.getActorVertices = () => {
+	/** @type {number[][]} */
+	get actorVertices()
+	{
 		const actorVertices = [];
 		this.actors.forEach((actor) => {
 			actorVertices.push(actor.getVertices());
 		});
 		return actorVertices;
-	};
-
-	/**
-	 * Gets an array of indices for each actor
-	 */
-	this.getActorIndices = () => {
+	}
+	get actorIndices()
+	{
 		const actorIndices = [];
 		this.actors.forEach((actor) => {
 			actorIndices.push(actor.getIndices());
 		});
 		return actorIndices;
-	};
+	}
 }
 
-/**
- * Represents an indexed model loaded from an OBJ file
- * @param {string} name
- * @param {Array<Array>} positions
- * @param {Array<Array>} texCoords
- * @param {Array<Array>} normals
- * @param {Int16Array} indices
- */
-function OBJModel(name, positions, texCoords, normals, indices)
+class OBJModel
 {
-	this.name = name || '';
-	this.positions = positions || [];
-	this.texCoords = texCoords || [];
-	this.normals = normals || [];
-	this.indices = indices || [];
+	constructor(name = '', positions = [], texCoords = [], normals = [], indices = [])
+	{
+		this.name = name;
+		this.positions = positions;
+		this.texCoords = texCoords;
+		this.normals = normals;
+		this.indices = indices;
+	}
 
-	// Returns the vertices of this model, optionally transformed by the given model matrix
-	this.getVertices = (modelMatrix) => {
+	/**
+	 * Returns the vertices of this model, optionally transformed by the given model matrix
+	 * @param {mat4} modelMatrix
+	 * @returns {number[]}
+	 */
+	transformedVertices(modelMatrix = mat4.create()) {
 		const vertices = [];
-		modelMatrix = modelMatrix || mat4.create();
 
 		for (let i = 0; i < this.positions.length; ++i)
 		{
@@ -185,26 +205,28 @@ function OBJModel(name, positions, texCoords, normals, indices)
 		}
 
 		return vertices;
-	};
+	}
 
-	this.getIndices = () => this.indices;
+	/** Returns the vertices of this model. */
+	get vertices() { return this.transformedVertices(); }
+
+	get indices() { return this.indices; }
 }
-
 // #endregion Objects/Classes
+
 /**
  * Creates and initializes the vertex and index buffers
  * @param {WebGLRenderingContext} gl
  * @returns { vertices: WebGLBuffer, indices: WebGLBuffer, certexCount: number}
  * @returns vertexBuffer id, indexBuffer id, and vertex count
  */
-function initBuffers(gl)
-{
-	const vertices = currentStage.getSetpieceVertices();
+function initBuffers(gl) {
+	const { vertices } = currentStage;
 	const vertexBuffer = gl.createBuffer();
 	gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
 	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
-	const indices = currentStage.getMergedSetpieceIndices();
+	const { indices } = currentStage.indices;
 	const indexBuffer = gl.createBuffer();
 	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
 	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
@@ -362,7 +384,7 @@ function attachInputListeners(gl)
 }
 
 /**
- * Retrives a file from the web server. Rejects on non-Response.ok, and returns the body.
+ * Retrives a file from the web server. Rejects on non-Response.ok, and returns a promise to the body.
  * @param {string} filepath
  * @returns {Promise<string>}
  */
@@ -427,8 +449,7 @@ function loadOBJ(filename, raw)
 						normalizeIndices(currObj);
 						objs.push(currObj);
 					}
-					currObj = new OBJModel();
-					currObj.name = tokens.slice(1).join(' ').trim();
+					currObj = new OBJModel(tokens.slice(1).join(' ').trim());
 					break;
 				}
 				case 'v': { // Vertex Position
