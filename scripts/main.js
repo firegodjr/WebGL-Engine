@@ -5,7 +5,7 @@ const ATTRIB_TEXCOORD_LENGTH = 2;
 const ATTRIB_NORMAL_LENGTH = 3;
 const VERTEX_COMPONENTS_LENGTH = ATTRIB_POS_LENGTH + ATTRIB_TEXCOORD_LENGTH + ATTRIB_NORMAL_LENGTH;
 /** @type {{ [s: string]: OBJModel }  */
-const modelStore = { default: [], };
+const modelStore = { default: [] };
 let currentStage = {};
 
 /**
@@ -14,20 +14,9 @@ let currentStage = {};
  */
 function getLookVector(transform)
 {
-	const zNormal = vec3.create(0, 0, -1);
+	const zNormal = vec3.fromValues(0, 0, -1);
 	vec3.transformMat4(zNormal, zNormal, transform.modelMatrix);
 	return zNormal;
-}
-
-/**
- * Gets the up-pointing normal vector
- * @param {Transform} transform
- */
-function getUpNormal(transform)
-{
-	const upNormal = vec3.create(0, 1, 0);
-	vec3.transformMat4(upNormal, upNormal, transform.modelMatrix);
-	return upNormal;
 }
 
 /**
@@ -48,15 +37,60 @@ function createBuffers(gl, vertices, indices) {
 	return { vertices: vertexBuffer, indices: indexBuffer, vertexCount: indices.length };
 }
 
+function drawInterleavedBuffer(gl, programInfo, buffers, textures, modelViewMatrix, projectionMatrix)
+{
+	const GL_FLOAT_BYTES = 4;
+
+	// Tell WebGL to use our program when drawing
+	gl.useProgram(programInfo.program);
+
+	// Create the normal matrix for transforming normal positions
+	const normalMatrix = mat4.create();
+	mat4.invert(normalMatrix, modelViewMatrix);
+	mat4.transpose(normalMatrix, normalMatrix);
+
+	// Set the shader uniforms
+	gl.uniformMatrix4fv(programInfo.uniformLocations.modelViewMatrix, false, modelViewMatrix);
+	gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
+	gl.uniformMatrix4fv(programInfo.uniformLocations.normalMatrix, false, normalMatrix);
+
+	gl.bindBuffer(gl.ARRAY_BUFFER, buffers.vertices);
+	gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, ATTRIB_POS_LENGTH, gl.FLOAT, false, GL_FLOAT_BYTES * VERTEX_COMPONENTS_LENGTH, 0);
+	gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, ATTRIB_TEXCOORD_LENGTH, gl.FLOAT, false, GL_FLOAT_BYTES * VERTEX_COMPONENTS_LENGTH, GL_FLOAT_BYTES * ATTRIB_POS_LENGTH);
+	gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, ATTRIB_NORMAL_LENGTH, gl.FLOAT, false, GL_FLOAT_BYTES * VERTEX_COMPONENTS_LENGTH, GL_FLOAT_BYTES * (ATTRIB_POS_LENGTH + ATTRIB_TEXCOORD_LENGTH));
+
+	gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+	gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+	gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
+
+	// Tell WebGL which indices to use to index the vertices
+	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
+
+	// Tell WebGL we want to affect texture unit 0
+	gl.activeTexture(gl.TEXTURE0);
+
+	// Bind the texture to texture unit 0
+	gl.bindTexture(gl.TEXTURE_2D, textures[0]);
+
+	// Tell the shader we bound the texture to texture unit 0
+	gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
+
+	{
+		const offset = 0;
+		const { vertexCount } = buffers;
+		const type = gl.UNSIGNED_SHORT;
+		gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
+	}
+}
+
 /**
  * Handles matrix initialization and all draw calls
  * @param {WebGLRenderingContext} gl
- * @param {number[][]}
- * @param {number[][]}
+ * @param {Stage} stage
  * @param {object} programInfo
  * @param {number} texture
  */
-function drawStage(gl, actors, programInfo, texture)
+function drawStage(gl, stage, programInfo, texture)
 {
 	gl.clearColor(...CLEAR_COLOR);
 	gl.clearDepth(1.0);
@@ -76,64 +110,28 @@ function drawStage(gl, actors, programInfo, texture)
 	// Initialize to projection matrix values
 	mat4.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
 
-	// Set the drawing position to the 'identity' point
-	const modelViewMatrix = mat4.create();
-	const viewMatrix = mat4.create();
-	const cameraTransform = currentStage.actors.camera.transform;
-	cameraTransform.initModelMatrix();
-
-	const GL_FLOAT_BYTES = 4;
 	// Tell Webgl how to pull out the positions from the position buffer into the
 	// vertexposition attribute
-	actors.forEach((actor) => {
-		const buffers = createBuffers(gl, actor.vertices, actor.indices);
+	const viewMatrix = mat4.create();
+	stage.actors.camera.transform.initModelMatrix();
+	const cameraTransform = stage.actors.camera.transform;
+	mat4.lookAt(viewMatrix, cameraTransform.translation, getLookVector(cameraTransform), vec3.fromValues(0, 1, 0));
 
+	stage.actors.forEach((actor) => {
+		// Set the drawing position to the 'identity' point
+		const modelViewMatrix = mat4.create();
 		// Create the ModelView matrix
 		actor.transform.initModelMatrix();
-		mat4.lookAt(viewMatrix, cameraTransform.translation, getLookVector(cameraTransform), vec3.fromValues(0, 1, 0));
 		mat4.mul(modelViewMatrix, actor.transform.modelMatrix, viewMatrix);
 
-		// Create the normal matrix for transforming normal positions
-		const normalMatrix = mat4.create();
-		mat4.invert(normalMatrix, modelViewMatrix);
-		mat4.transpose(normalMatrix, normalMatrix);
+		// Create buffers for vertex arrays
+		const buffers = createBuffers(gl, actor.vertices, actor.indices);
 
-		gl.bindBuffer(gl.ARRAY_BUFFER, buffers.vertices);
-		gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, ATTRIB_POS_LENGTH, gl.FLOAT, false, GL_FLOAT_BYTES * VERTEX_COMPONENTS_LENGTH, 0);
-		gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, ATTRIB_TEXCOORD_LENGTH, gl.FLOAT, false, GL_FLOAT_BYTES * VERTEX_COMPONENTS_LENGTH, GL_FLOAT_BYTES * ATTRIB_POS_LENGTH);
-		gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, ATTRIB_NORMAL_LENGTH, gl.FLOAT, false, GL_FLOAT_BYTES * VERTEX_COMPONENTS_LENGTH, GL_FLOAT_BYTES * (ATTRIB_POS_LENGTH + ATTRIB_TEXCOORD_LENGTH));
-
-		gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
-		gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
-		gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
-
-		// Tell WebGL to use our program when drawing
-		gl.useProgram(programInfo.program);
-
-		// Set the shader uniforms
-		gl.uniformMatrix4fv(programInfo.uniformLocations.modelViewMatrix, false, modelViewMatrix);
-		gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
-		gl.uniformMatrix4fv(programInfo.uniformLocations.normalMatrix, false, normalMatrix);
-
-		// Tell WebGL which indices to use to index the vertices
-		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
-
-		// Tell WebGL we want to affect texture unit 0
-		gl.activeTexture(gl.TEXTURE0);
-
-		// Bind the texture to texture unit 0
-		gl.bindTexture(gl.TEXTURE_2D, texture);
-
-		// Tell the shader we bound the texture to texture unit 0
-		gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
-
-		{
-			const offset = 0;
-			const { vertexCount } = buffers;
-			const type = gl.UNSIGNED_SHORT;
-			gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
-		}
+		drawInterleavedBuffer(gl, programInfo, buffers, [texture], modelViewMatrix, projectionMatrix);
 	});
+
+	const buffers = createBuffers(gl, stage.vertices, stage.indices);
+	drawInterleavedBuffer(gl, programInfo, buffers, [texture], viewMatrix, projectionMatrix);
 }
 
 // #region utilities
@@ -377,6 +375,9 @@ function main()
 		return;
 	}
 
+	// Make sure the canvas fills the screen
+	refreshCanvasSize(gl);
+
 	// Load a model into memory
 	['models/barrel_ornate.obj', 'models/cube.obj']
 		.forEach(name => safeFetch(name).then(v => loadOBJToModelStore(name, v)));
@@ -388,7 +389,6 @@ function main()
 			const programInfo = getProgramInfo(gl, prog);
 
 			attachInputListeners(gl);
-			refreshCanvasSize(gl);
 
 			let lastFrameSec = 0;
 			function render(timeMillis)
@@ -398,8 +398,8 @@ function main()
 				lastFrameSec = timeSecs;
 
 				currentStage.update(deltaTime, timeSecs);
-				currentStage.actors.camera.transform.posZ += 1;
-				drawStage(gl, currentStage.actors, programInfo, texture);
+				currentStage.actors.camera.transform.posZ = 5;
+				drawStage(gl, currentStage, programInfo, texture);
 				requestAnimationFrame(render);
 			}
 
@@ -408,6 +408,6 @@ function main()
 }
 
 const testActor = new StageActor('Test Actor', 'Cube');
-currentStage = new Stage('Main', [testActor], [testActor]);
+currentStage = new Stage('Main', [testActor]);
 
 main();

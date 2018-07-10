@@ -41,7 +41,6 @@ class Transform
 	/** @type {number} */ set posY(value) { this.translation[1] = value; }
 	/** @type {number} */ set posZ(value) { this.translation[2] = value; }
 
-	// Can these be replaced with 'set rotationX(value) {this.rotation = value}' ?
 	/** @type {number} */ set rotationX(value) { quat.rotateX(this.rotation, quat.create(), value); }
 	/** @type {number} */ set rotationY(value) { quat.rotateY(this.rotation, quat.create(), value); }
 	/** @type {number} */ set rotationZ(value) { quat.rotateZ(this.rotation, quat.create(), value); }
@@ -88,7 +87,7 @@ class StageActor
 		this.transform.posZ -= deltaTime;
 	}
 
-	/** Returns the vertices of this actor's model, transformed by the actor's translation, rotation and scale */
+	/** Returns the vertices of this actor's model */
 	get vertices()
 	{
 		if (modelStore[this.modelName] === undefined)
@@ -106,6 +105,15 @@ class StageActor
 			return [];
 		}
 		return modelStore[this.modelName].indices;
+	}
+
+	transformedVertices(modelMatrix = mat4.create())
+	{
+		if (modelStore[this.modelName] === undefined)
+		{
+			throw new Error(`Attempted to get vertices of non-loaded model '${this.modelName}'.`);
+		}
+		return modelStore[this.modelName].transformedVertices(modelMatrix);
 	}
 }
 
