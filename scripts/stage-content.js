@@ -1,4 +1,3 @@
-
 /** Stores data relating to the position, rotation and scale of an actor in a stage */
 class Transform
 {
@@ -29,7 +28,7 @@ class Transform
 	initModelMatrix()
 	{
 		mat4.fromRotationTranslationScale(this._modelMatrix, this.rotation, this.translation, this.scale);
-		return this.modelMatrix;
+		return this._modelMatrix;
 	}
 
 
@@ -37,38 +36,38 @@ class Transform
 	/** @type {number} */ get posY() { return this.translation[1]; }
 	/** @type {number} */ get posZ() { return this.translation[2]; }
 
-	/** @type {number} */ set posX(value) { this.translation[0] = value; }
-	/** @type {number} */ set posY(value) { this.translation[1] = value; }
-	/** @type {number} */ set posZ(value) { this.translation[2] = value; }
+	/** @type {number} */ set posX(value) { this.translation[0] = value; return this; }
+	/** @type {number} */ set posY(value) { this.translation[1] = value; return this; }
+	/** @type {number} */ set posZ(value) { this.translation[2] = value; return this; }
 
-	/** @type {number} */ set rotationX(value) { quat.rotateX(this.rotation, quat.create(), value); }
-	/** @type {number} */ set rotationY(value) { quat.rotateY(this.rotation, quat.create(), value); }
-	/** @type {number} */ set rotationZ(value) { quat.rotateZ(this.rotation, quat.create(), value); }
+	/** @type {number} */ set rotationX(value) { quat.rotateX(this.rotation, quat.create(), value); return this; }
+	/** @type {number} */ set rotationY(value) { quat.rotateY(this.rotation, quat.create(), value); return this; }
+	/** @type {number} */ set rotationZ(value) { quat.rotateZ(this.rotation, quat.create(), value); return this; }
 
 	/** @type {number} */ get scaleX() { return this.scale[0]; }
 	/** @type {number} */ get scaleY() { return this.scale[1]; }
 	/** @type {number} */ get scaleZ() { return this.scale[2]; }
 
-	/** @type {number} */ set scaleX(value) { this.scale[0] = value; }
-	/** @type {number} */ set scaleY(value) { this.scale[1] = value; }
-	/** @type {number} */ set scaleZ(value) { this.scale[2] = value; }
+	/** @type {number} */ set scaleX(value) { this.scale[0] = value; return this; }
+	/** @type {number} */ set scaleY(value) { this.scale[1] = value; return this; }
+	/** @type {number} */ set scaleZ(value) { this.scale[2] = value; return this; }
 
-	/* Unneeded? (Just use the regular getters/setters at the call site.)
-	let t = new Translation();
-	t.posX += myValue;
-
-	this.translateX = (value) => { this.translation[0] += value; };
-	this.translateY = (value) => { this.translation[1] += value; };
-	this.translateZ = (value) => { this.translation[2] += value; }; */
-
-	rotateX(value) { quat.rotateX(this.rotation, this.rotation, value); }
-	rotateY(value) { quat.rotateY(this.rotation, this.rotation, value); }
-	rotateZ(value) { quat.rotateZ(this.rotation, this.rotation, value); }
+	rotateX(value) { quat.rotateX(this.rotation, this.rotation, value); return this; }
+	rotateY(value) { quat.rotateY(this.rotation, this.rotation, value); return this; }
+	rotateZ(value) { quat.rotateZ(this.rotation, this.rotation, value); return this; }
 }
 
 /** An entity that exists in worldspace */
 class StageActor
 {
+	static createFromManifest(stringManifest = '')
+	{
+		const manifest = JSON.parse(stringManifest);
+		const Actor = new StageActor(manifest.name, manifest.modelName);
+		safeFetch(manifest.script).then(v => eval(v));
+
+		return Actor;
+	}
 	/**
 	 * @param {string} name
 	 * @param {string} modelName
@@ -80,12 +79,14 @@ class StageActor
 		this.transform = new Transform();
 	}
 
+	init(deltaTime, elapsedTime) { }
+
 	update(deltaTime, elapsedTime)
 	{
-		// TODO eval() from externally loaded script
-		// note: *never* use 'eval'
-		this.transform.posZ -= deltaTime;
+		this.transform.rotateY(deltaTime * 3);
 	}
+
+	onDestroy(deltaTime, elapsedTime) { }
 
 	/** Returns the vertices of this actor's model */
 	get vertices()

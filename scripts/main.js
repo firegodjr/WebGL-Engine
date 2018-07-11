@@ -1,11 +1,3 @@
-const CLEAR_COLOR = [0.3, 0.3, 0.9, 1.0];
-const DEFAULT_MODEL_NAME = 'default';
-const ATTRIB_POS_LENGTH = 3;
-const ATTRIB_TEXCOORD_LENGTH = 2;
-const ATTRIB_NORMAL_LENGTH = 3;
-const VERTEX_COMPONENTS_LENGTH = ATTRIB_POS_LENGTH + ATTRIB_TEXCOORD_LENGTH + ATTRIB_NORMAL_LENGTH;
-/** @type {{ [s: string]: OBJModel }  */
-const modelStore = { default: [] };
 let currentStage = {};
 
 /**
@@ -113,25 +105,24 @@ function drawStage(gl, stage, programInfo, texture)
 	// Tell Webgl how to pull out the positions from the position buffer into the
 	// vertexposition attribute
 	const viewMatrix = mat4.create();
-	stage.actors.camera.transform.initModelMatrix();
 	const cameraTransform = stage.actors.camera.transform;
+	cameraTransform.initModelMatrix();
 	mat4.lookAt(viewMatrix, cameraTransform.translation, getLookVector(cameraTransform), vec3.fromValues(0, 1, 0));
+
+	const stageBuffers = createBuffers(gl, stage.vertices, stage.indices);
+	drawInterleavedBuffer(gl, programInfo, stageBuffers, [texture], viewMatrix, projectionMatrix);
 
 	stage.actors.forEach((actor) => {
 		// Set the drawing position to the 'identity' point
 		const modelViewMatrix = mat4.create();
 		// Create the ModelView matrix
-		actor.transform.initModelMatrix();
-		mat4.mul(modelViewMatrix, actor.transform.modelMatrix, viewMatrix);
+		mat4.mul(modelViewMatrix, actor.transform.initModelMatrix(), viewMatrix);
 
 		// Create buffers for vertex arrays
 		const buffers = createBuffers(gl, actor.vertices, actor.indices);
 
 		drawInterleavedBuffer(gl, programInfo, buffers, [texture], modelViewMatrix, projectionMatrix);
 	});
-
-	const buffers = createBuffers(gl, stage.vertices, stage.indices);
-	drawInterleavedBuffer(gl, programInfo, buffers, [texture], viewMatrix, projectionMatrix);
 }
 
 // #region utilities
@@ -201,24 +192,6 @@ function attachInputListeners(gl)
 {
 	window.onresize = function onWindowResize() { refreshCanvasSize(gl); };
 }
-
-/**
- * Retrives a file from the web server. Rejects on non-Response.ok, and returns a promise to the body.
- * @param {string} filepath
- * @returns {Promise<string>}
- */
-async function safeFetch(filepath)
-{
-	return fetch(filepath)
-		.then((resp) => {
-			if (!resp.ok)
-			{
-				throw new Error(`Unsuccessful fetch of resource '${filepath}'`);
-			}
-			return resp.text();
-		});
-}
-
 
 // Set indices relative to only this object's vertices, not to all vertices in the .obj file
 function normalizeIndices(obj)
@@ -399,6 +372,7 @@ function main()
 
 				currentStage.update(deltaTime, timeSecs);
 				currentStage.actors.camera.transform.posZ = 5;
+				currentStage.actors.camera.transform.rotationY = Math.sin(timeSecs / 2) / 8;
 				drawStage(gl, currentStage, programInfo, texture);
 				requestAnimationFrame(render);
 			}
@@ -408,6 +382,6 @@ function main()
 }
 
 const testActor = new StageActor('Test Actor', 'Cube');
-currentStage = new Stage('Main', [testActor]);
+currentStage = new Stage('Main', [testActor], [testActor]);
 
 main();

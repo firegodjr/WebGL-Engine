@@ -36,7 +36,7 @@
 		"no-plusplus": "off",
 		"no-bitwise": "warn",
 		"no-lone-blocks": "off",
-		"no-unused-vars": "warn",
+		"no-unused-vars": "off",
 		"no-param-reassign": "off",
 		"no-var": "error",
 		"no-console": "off",
@@ -51,7 +51,9 @@
 		"comma-dangle": ["warn", "only-multiline"],
 		"implicit-arrow-linebreak": ["warn", "beside"],
 		"lines-between-class-members": ["off"],
-		"no-underscore-dangle": ["off"]
+		"no-underscore-dangle": ["off"],
+		"no-undef": ["warn"],
+		"no-eval": ["off"]
 	},
 	"root": true
 	

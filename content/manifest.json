@@ -1,0 +1,8 @@
+{
+	"scenes": [
+		"scene1.json"
+	],
+	"actors": [
+		"actors/cubeActor.json"
+	]
+}

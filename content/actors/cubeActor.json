@@ -1,0 +1,8 @@
+{
+	"name": "cubeActor",
+	"modelName": "Cube",
+	"script": "cubeActor.js",
+	"onload": "",
+	"ondestroy": "",
+	"update": ""
+}
