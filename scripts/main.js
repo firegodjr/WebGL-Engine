@@ -116,7 +116,7 @@ function drawStage(gl, stage, programInfo, texture)
 		// Set the drawing position to the 'identity' point
 		const modelViewMatrix = mat4.create();
 		// Create the ModelView matrix
-		mat4.mul(modelViewMatrix, actor.transform.initModelMatrix(), viewMatrix);
+		mat4.mul(modelViewMatrix, viewMatrix, actor.transform.initModelMatrix());
 
 		// Create buffers for vertex arrays
 		const buffers = createBuffers(gl, actor.vertices, actor.indices);
@@ -371,8 +371,6 @@ function main()
 				lastFrameSec = timeSecs;
 
 				currentStage.update(deltaTime, timeSecs);
-				currentStage.actors.camera.transform.posZ = 5;
-				currentStage.actors.camera.transform.rotationY = Math.sin(timeSecs / 2) / 8;
 				drawStage(gl, currentStage, programInfo, texture);
 				requestAnimationFrame(render);
 			}
@@ -382,6 +380,7 @@ function main()
 }
 
 const testActor = new StageActor('Test Actor', 'Cube');
-currentStage = new Stage('Main', [testActor], [testActor]);
+currentStage = new Stage('Main', [], [testActor]);
+currentStage.actors.camera.transform.posZ = 15;
 
 main();

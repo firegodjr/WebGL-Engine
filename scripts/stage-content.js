@@ -83,7 +83,7 @@ class StageActor
 
 	update(deltaTime, elapsedTime)
 	{
-		this.transform.rotateY(deltaTime * 3);
+		this.transform.rotateY(deltaTime);
 	}
 
 	onDestroy(deltaTime, elapsedTime) { }
