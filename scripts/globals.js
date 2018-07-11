@@ -5,5 +5,9 @@ const ATTRIB_TEXCOORD_LENGTH = 2;
 const ATTRIB_NORMAL_LENGTH = 3;
 const VERTEX_COMPONENTS_LENGTH = ATTRIB_POS_LENGTH + ATTRIB_TEXCOORD_LENGTH + ATTRIB_NORMAL_LENGTH;
 /** @type {{ [s: string]: OBJModel }  */
+const stageUrlStore = { default: [] };
 const modelStore = { default: [] };
-const actorStore = { default: [] };
+let modelsLoaded = false;
+let preloadDone = false;
+let actorsDone = false;
+let setpiecesDone = false;

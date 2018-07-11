@@ -335,6 +335,11 @@ function loadOBJToModelStore(filename, raw)
 	});
 }
 
+function switchStage(index)
+{
+	currentStage = buildStage(index);
+}
+
 // #endregion
 
 function main()
@@ -379,8 +384,6 @@ function main()
 		});
 }
 
-const testActor = new StageActor('Test Actor', 'Cube');
-currentStage = new Stage('Main', [], [testActor]);
-currentStage.actors.camera.transform.posZ = 15;
+loadContent();
 
 main();

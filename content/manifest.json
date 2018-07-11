@@ -1,8 +1,5 @@
 {
-	"scenes": [
-		"scene1.json"
-	],
-	"actors": [
-		"actors/cubeActor.json"
+	"stages": [
+		{ "url": "scene1.json" }
 	]
 }
