@@ -132,6 +132,26 @@ function isPowerOf2(value)
 	return (value & (value - 1)) === 0;
 }
 
+function textureFromBitmap(gl, image)
+{
+	const texture = gl.createTexture();
+	gl.bindTexture(gl.TEXTURE_2D, texture);
+	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+
+	if (isPowerOf2(image.width) && isPowerOf2(image.height))
+	{
+		gl.generateMipmap(gl.TEXTURE_2D);
+	}
+	else
+	{
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+	}
+
+	return texture;
+}
+
 function loadTexture(gl, url)
 {
 	const texture = gl.createTexture();
@@ -356,28 +376,32 @@ function main()
 	// Make sure the canvas fills the screen
 	refreshCanvasSize(gl);
 
-	const texture = loadTexture(gl, 'firefox.png');
+	// const texture = loadTexture(gl, 'firefox.png');
+	let texture = null;
+	loadTextureAtlas(null, ["firefoxsmol.png", "firefox.png", "firefoxsmol.png", "firefoxsmol.png"]).then((atlasData) => {
+		texture = textureFromBitmap(gl, atlasData.atlas);
 
-	initDefaultShaderProgram(gl)
-		.then((prog) => {
-			const programInfo = getProgramInfo(gl, prog);
+		initDefaultShaderProgram(gl)
+			.then((prog) => {
+				const programInfo = getProgramInfo(gl, prog);
 
-			attachInputListeners(gl);
+				attachInputListeners(gl);
 
-			let lastFrameSec = 0;
-			function render(timeMillis)
-			{
-				const timeSecs = timeMillis * 0.001; // convert to seconds
-				const deltaTime = timeSecs - lastFrameSec;
-				lastFrameSec = timeSecs;
+				let lastFrameSec = 0;
+				function render(timeMillis)
+				{
+					const timeSecs = timeMillis * 0.001; // convert to seconds
+					const deltaTime = timeSecs - lastFrameSec;
+					lastFrameSec = timeSecs;
 
-				currentStage.update(deltaTime, timeSecs);
-				drawStage(gl, currentStage, programInfo, texture);
+					currentStage.update(deltaTime, timeSecs);
+					drawStage(gl, currentStage, programInfo, texture);
+					requestAnimationFrame(render);
+				}
+
 				requestAnimationFrame(render);
-			}
-
-			requestAnimationFrame(render);
-		});
+			});
+	});
 }
 
 loadContent().then(main);

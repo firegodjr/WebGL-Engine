@@ -32,6 +32,115 @@ function getConfiguredActor(actorParams)
 	return actor;
 }
 
+async function promiseImage(image, src)
+{
+	return new Promise((resolve, reject) => {
+		image.onload = resolve;
+		image.src = `textures/${src}`;
+	});
+}
+
+function sortImageSizes(a, b)
+{
+	if (a.naturalHeight > b.naturalHeight)
+	{
+		return -1;
+	}
+
+	if (a.naturalHeight < b.naturalHeight)
+	{
+		return 1;
+	}
+
+	return 0;
+}
+
+/**
+ * Returns the RGBA values of the pixel
+ * @param {ImageData} imageData
+ * @param {number} x
+ * @param {number} y
+ * @returns {number[]}
+ */
+function getImagePixelRGBA(imageData, x, y)
+{
+	const offset = x + y * imageData.width;
+	return imageData.data.slice(offset, 4);
+}
+
+/**
+ * Generates a texture atlas from the given image urls
+ * @param {WebGLRenderingContext} gl
+ * @param {string[]} urls
+ * @returns {ImageBitmap}
+ */
+async function loadTextureAtlas(gl, urls)
+{
+	const loadedImgs = [];
+	const offsets = [];
+	let currentPower = 9;
+	/** @type {ImageBitmap} */
+	const canvas = document.createElement('canvas');
+	// TODO canvas.style.display = "none";
+	document.body.appendChild(canvas);
+
+	await Promise.all(urls.map((url, i) => {
+		const image = new Image();
+		loadedImgs.push(image);
+		return promiseImage(image, url);
+	}));
+
+	loadedImgs.sort(sortImageSizes);
+
+	let pixelSum = 0;
+	loadedImgs.forEach((img) => { pixelSum += img.naturalWidth * img.naturalHeight; });
+
+	// Find the optimal power of 2 to use
+	while (2 ** currentPower < Math.sqrt(pixelSum))
+	{
+		++currentPower;
+	}
+
+	canvas.width = 2 ** currentPower;
+	canvas.height = canvas.width;
+	const ctx = canvas.getContext("2d");
+
+	let x = 0;
+	let y = 0;
+	let XOffset = 0;
+	let XOffsetThreshold = 0;
+
+	loadedImgs.forEach((image, index, imgs) => {
+
+		ctx.drawImage(image, y > XOffsetThreshold ? x : XOffset, y);
+
+		offsets.push([
+			x / canvas.width,
+			y / canvas.height,
+			(x + image.naturalWidth) / canvas.width,
+			(y + image.naturalHeight) / canvas.height
+		]);
+
+		if (x === canvas.width)
+		{
+			y += image.naturalHeight;
+			x = 0;
+		}
+
+		if (y >= XOffsetThreshold)
+		{
+			XOffset = x + image.naturalWidth;
+			XOffsetThreshold = y + image.naturalHeight;
+		}
+	});
+
+	return {
+		atlas: await createImageBitmap(ctx.getImageData(0, 0, canvas.width, canvas.height)),
+		offsets
+	};
+}
+
+
 /**
  * Builds a stage object from a loaded stage manifest
  * @param {number} index

@@ -171,6 +171,8 @@ class Stage
 		this.bakedIndices = stageIndices;
 	}
 
+	// TODO: Vertices need to be properly batched for individual texture mapping,
+	//			 or, preferably, textures need to be atlassed
 	/** @type {number[]} */
 	get vertices()
 	{
