@@ -108,13 +108,16 @@ class StageActor
 		return modelStore[this.modelName].indices;
 	}
 
-	transformedVertices(modelMatrix = mat4.create())
+	/**
+	 * Gets the vertices of this model, offset by the actor's model matrix
+	 */
+	transformedVertices()
 	{
 		if (modelStore[this.modelName] === undefined)
 		{
 			throw new Error(`Attempted to get vertices of non-loaded model '${this.modelName}'.`);
 		}
-		return modelStore[this.modelName].transformedVertices(modelMatrix);
+		return modelStore[this.modelName].transformedVertices(this.transform.initModelMatrix());
 	}
 }
 
@@ -133,6 +136,10 @@ class Stage
 		/** @type {{ [n: number]: StageActor, camera: StageActor } */
 		this.actors = actors;
 		this.actors.camera = new StageActor('camera', DEFAULT_MODEL_NAME);
+
+		/** @type { number[] } */
+		this.bakedVertices = [];
+		this.bakedIndices = [];
 	}
 
 	update(deltaTime, elapsedTime)
@@ -140,26 +147,40 @@ class Stage
 		this.actors.forEach(actor => actor.update(deltaTime, elapsedTime));
 	}
 
+	/**
+	 * Converts all setpiece actors into static vertex and index arrays,
+	 * which can be retrieved from stage.vertices and stage.indices
+	 */
+	bakeSetpiece()
+	{
+		const stageVertices = [];
+		const stageIndices = [];
+		let lastIndex = 0;
+
+		this.setpieces.forEach((/** @type {StageActor} */ actor) => {
+			// Bake actor vertices
+			const actorVertices = actor.transformedVertices();
+			stageVertices.push(...actorVertices);
+
+			// Bake actor indices
+			const setpieceIndices = actor.indices.map(value => value + lastIndex);
+			lastIndex = actorVertices.length / VERTEX_COMPONENTS_LENGTH;
+			stageIndices.push(...setpieceIndices);
+		});
+		this.bakedVertices = stageVertices;
+		this.bakedIndices = stageIndices;
+	}
+
 	/** @type {number[]} */
 	get vertices()
 	{
-		const stageVertices = [];
-		this.setpieces.forEach((/** @type {StageActor} */ actor) => {
-			stageVertices.push(...actor.vertices);
-		});
-		return stageVertices;
+		return this.bakedVertices;
 	}
+
 	/** @type {number[]} */
 	get indices()
 	{
-		const stageIndices = [];
-		let lastIndex = 0;
-		this.setpieces.forEach((actor) => {
-			const setpieceIndices = actor.indices.map(value => value + lastIndex);
-			lastIndex = actor.vertices.length / VERTEX_COMPONENTS_LENGTH;
-			stageIndices.push(...setpieceIndices);
-		});
-		return stageIndices;
+		return this.bakedIndices;
 	}
 
 	/** @type {number[][]} */

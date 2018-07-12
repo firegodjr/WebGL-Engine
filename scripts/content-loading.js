@@ -42,22 +42,25 @@ async function buildStage(index)
 	const stage = new Stage(manifest.name);
 
 	// Load all stage prerequisites
-	Promise.all(manifest.preload.map((url) => {
-		return safeFetch(`content/${url}`).then((actor) => { 
-			const actorManifest = JSON.parse(actor); 
-			actorStore[actorManifest.name] = actorManifest; 
-		});
-	})).then(() => {
-		// Load all setpieces
-		manifest.setpieces.forEach((actorParams) => {
-			stage.setpieces.push(getConfiguredActor(actorParams));
-		});
+	Promise.all(manifest.preload.map(url => safeFetch(`content/${url}`)
+		.then((actor) => {
+			const actorManifest = JSON.parse(actor);
+			actorStore[actorManifest.name] = actorManifest;
+		})))
+		.then(() => {
+			// Load all setpieces
+			manifest.setpieces.forEach((actorParams) => {
+				stage.setpieces.push(getConfiguredActor(actorParams));
+			});
 
-		// Load all actors
-		manifest.actors.forEach((actorParams) => {
-			stage.actors.push(getConfiguredActor(actorParams));
+			// Load all actors
+			manifest.actors.forEach((actorParams) => {
+				stage.actors.push(getConfiguredActor(actorParams));
+			});
+
+			// Bake the actors
+			stage.bakeSetpiece();
 		});
-	});
 
 	return stage;
 }
@@ -69,22 +72,17 @@ async function loadContent(callback)
 {
 	const MANIFEST_PATH = "content/manifest.json";
 	let manifest = {};
-	return safeFetch(MANIFEST_PATH)
-	.then((v) => {
+	return safeFetch(MANIFEST_PATH).then((v) => {
 		manifest = JSON.parse(v);
 		return Promise.all(manifest.stages.map((stage) => {
-			return safeFetch(`content/${stage.url}`)
-			.then((stageManifest) => {
+			return safeFetch(`content/${stage.url}`).then((stageManifest) => {
 				stageStore.push(JSON.parse(stageManifest));
 			});
-		}),
-	)
-	})
-	.then(() => {
-		return Promise.all(['models/barrel_ornate.obj', 'models/cube.obj'] // TODO: load this array dynamically
-			.map(name => { return safeFetch(name).then(v => loadOBJToModelStore(name, v))})
-		);
-	})
-	.then(() => { return buildStage(0); })
-	.then(stage => currentStage = stage);
+		}));
+	}).then(() => Promise.all(
+		['models/barrel_ornate.obj', 'models/cube.obj'] // TODO: load this array dynamically
+			.map(name => safeFetch(name).then(v => loadOBJToModelStore(name, v)))
+	))
+		.then(() => buildStage(0))
+		.then((stage) => { currentStage = stage; });
 }
