@@ -25,7 +25,7 @@ function getConfiguredActor(actorParams)
 {
 	const template = actorStore[actorParams.name];
 	const actor = new StageActor(template.name, template.modelName);
-	actor.transform.translation = vec3.fromValues(...actorParams.translation);
+	actor.transform.translation = vec3.fromValues(...actorParams.position);
 	[actor.transform.rotationX,	actor.transform.rotationY, actor.transform.rotationZ] = actorParams.rotation;
 	actor.transform.scale = vec3.fromValues(...actorParams.scale);
 
@@ -43,7 +43,10 @@ async function buildStage(index)
 
 	// Load all stage prerequisites
 	Promise.all(manifest.preload.map((url) => {
-		return safeFetch(`content/${url}`).then((actor) => { const actorManifest = JSON.parse(actor); actorStore[actorManifest.name] = actorManifest; });
+		return safeFetch(`content/${url}`).then((actor) => { 
+			const actorManifest = JSON.parse(actor); 
+			actorStore[actorManifest.name] = actorManifest; 
+		});
 	})).then(() => {
 		// Load all setpieces
 		manifest.setpieces.forEach((actorParams) => {
@@ -62,17 +65,20 @@ async function buildStage(index)
 /**
  * Load all stage objects from manifest.json into memory
  */
-async function loadContent()
+async function loadContent(callback)
 {
 	const MANIFEST_PATH = "content/manifest.json";
 	let manifest = {};
-	safeFetch(MANIFEST_PATH).then((v) => {
+	return safeFetch(MANIFEST_PATH)
+	.then((v) => {
 		manifest = JSON.parse(v);
-		manifest.stages.forEach(stage => safeFetch(`content/${stage.url}`).then((stageManifest) => {
-			stageStore.push(JSON.parse(stageManifest));
-
-			// Initialize the default stage
-			currentStage = buildStage(0);
-		}));
-	});
+		return Promise.all(manifest.stages.map((stage) => {
+			return safeFetch(`content/${stage.url}`)
+			.then((stageManifest) => {
+				stageStore.push(JSON.parse(stageManifest));
+			});
+		}))
+	})
+	.then(() => { return buildStage(0); })
+	.then(stage => currentStage = stage);
 }

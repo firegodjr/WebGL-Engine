@@ -384,6 +384,4 @@ function main()
 		});
 }
 
-loadContent();
-
-main();
+loadContent().then(main);
