@@ -77,7 +77,13 @@ async function loadContent(callback)
 			.then((stageManifest) => {
 				stageStore.push(JSON.parse(stageManifest));
 			});
-		}))
+		}),
+	)
+	})
+	.then(() => {
+		return Promise.all(['models/barrel_ornate.obj', 'models/cube.obj'] // TODO: load this array dynamically
+			.map(name => { return safeFetch(name).then(v => loadOBJToModelStore(name, v))})
+		);
 	})
 	.then(() => { return buildStage(0); })
 	.then(stage => currentStage = stage);

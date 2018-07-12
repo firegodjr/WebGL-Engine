@@ -356,10 +356,6 @@ function main()
 	// Make sure the canvas fills the screen
 	refreshCanvasSize(gl);
 
-	// Load a model into memory
-	['models/barrel_ornate.obj', 'models/cube.obj']
-		.forEach(name => safeFetch(name).then(v => loadOBJToModelStore(name, v)));
-
 	const texture = loadTexture(gl, 'firefox.png');
 
 	initDefaultShaderProgram(gl)
