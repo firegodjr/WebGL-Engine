@@ -77,6 +77,7 @@ class StageActor
 		this.name = name;
 		this.modelName = modelName;
 		this.transform = new Transform();
+		this.textureRange = [1, 1, 0, 0];
 	}
 
 	init(deltaTime, elapsedTime) { }
@@ -95,7 +96,7 @@ class StageActor
 		{
 			throw new Error(`Attempted to get vertices of non-loaded model '${this.modelName}'.`);
 		}
-		return modelStore[this.modelName].vertices;
+		return modelStore[this.modelName].atlasTexcoordVertices(this.textureRange);
 	}
 
 	get indices()
@@ -117,7 +118,7 @@ class StageActor
 		{
 			throw new Error(`Attempted to get vertices of non-loaded model '${this.modelName}'.`);
 		}
-		return modelStore[this.modelName].transformedVertices(this.transform.initModelMatrix());
+		return modelStore[this.modelName].transformedVertices(this.transform.initModelMatrix(), this.textureRange);
 	}
 }
 
@@ -136,6 +137,7 @@ class Stage
 		/** @type {{ [n: number]: StageActor, camera: StageActor } */
 		this.actors = actors;
 		this.actors.camera = new StageActor('camera', DEFAULT_MODEL_NAME);
+		this.textureAtlas = null;
 
 		/** @type { number[] } */
 		this.bakedVertices = [];
@@ -159,7 +161,7 @@ class Stage
 
 		this.setpieces.forEach((/** @type {StageActor} */ actor) => {
 			// Bake actor vertices
-			const actorVertices = actor.transformedVertices();
+			const actorVertices = actor.transformedVertices(null, actor.textureRange);
 			stageVertices.push(...actorVertices);
 
 			// Bake actor indices
@@ -221,7 +223,16 @@ class OBJModel
 	 * @param {mat4} modelMatrix
 	 * @returns {number[]}
 	 */
-	transformedVertices(modelMatrix = mat4.create()) {
+	transformedVertices(modelMatrix = mat4.create(), textureRange = [0, 0, 1, 1])
+	{
+		function offsetTexCoords(texCoords, range)
+		{
+			const X = (range[2] - range[0]) * texCoords[0] + range[0];
+			const Y = (range[3] - range[1]) * texCoords[1] + range[1];
+
+			return [X, Y];
+		}
+
 		const vertices = [];
 
 		for (let i = 0; i < this.positions.length; ++i)
@@ -230,12 +241,17 @@ class OBJModel
 			vec3.transformMat4(transformedPosition, this.positions[i], modelMatrix);
 			vertices.push(
 				...transformedPosition,
-				...this.texCoords[i],
+				...offsetTexCoords(this.texCoords[i], textureRange),
 				...this.normals[i]
 			);
 		}
 
 		return vertices;
+	}
+
+	atlasTexcoordVertices(textureRange)
+	{
+		return this.transformedVertices(undefined, textureRange);
 	}
 
 	/** Returns the vertices of this model. */

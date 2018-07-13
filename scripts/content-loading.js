@@ -1,5 +1,5 @@
 const stageStore = [];
-const actorStore = { default: [] };
+const actorStore = [];
 
 /**
  * Retrives a file from the web server. Rejects on non-Response.ok, and returns a promise to the body.
@@ -23,11 +23,12 @@ async function safeFetch(filepath)
  */
 function getConfiguredActor(actorParams)
 {
-	const template = actorStore[actorParams.name];
+	const template = actorStore[actorParams.actorID];
 	const actor = new StageActor(template.name, template.modelName);
 	actor.transform.translation = vec3.fromValues(...actorParams.position);
 	[actor.transform.rotationX,	actor.transform.rotationY, actor.transform.rotationZ] = actorParams.rotation;
 	actor.transform.scale = vec3.fromValues(...actorParams.scale);
+	actor.textureRange = template.textureRange;
 
 	return actor;
 }
@@ -74,7 +75,7 @@ function getImagePixelRGBA(imageData, x, y)
  * @param {string[]} urls
  * @returns {ImageBitmap}
  */
-async function loadTextureAtlas(gl, urls)
+async function loadTextureAtlas(urls)
 {
 	function tileImageSquare(canvas, ctx, offsets, xOffset, yOffset, currSize, images, index)
 	{
@@ -114,7 +115,7 @@ async function loadTextureAtlas(gl, urls)
 
 	const loadedImgs = [];
 	const offsets = [];
-	let currentPower = 9;
+	let currentPower = 1;
 	/** @type {ImageBitmap} */
 	const canvas = document.createElement('canvas');
 	// TODO canvas.style.display = "none";
@@ -160,24 +161,34 @@ async function buildStage(index)
 	const stage = new Stage(manifest.name);
 
 	// Load all stage prerequisites
-	Promise.all(manifest.preload.map(url => safeFetch(`content/${url}`)
+	await Promise.all(manifest.preload.map(url => safeFetch(`content/${url}`)
 		.then((actor) => {
 			const actorManifest = JSON.parse(actor);
-			actorStore[actorManifest.name] = actorManifest;
+			actorStore.push(actorManifest);
 		})))
 		.then(() => {
-			// Load all setpieces
-			manifest.setpieces.forEach((actorParams) => {
-				stage.setpieces.push(getConfiguredActor(actorParams));
-			});
+			// Create a texture atlas for the stage's actors
+			const urls = actorStore.map(a => a.texture);
+			return loadTextureAtlas(urls).then((atlas) => {
+				stage.textureAtlas = atlas.atlas;
+				// Record the new texture coordinate ranges
+				actorStore.forEach((actor, i) => {
+					actor.textureRange = atlas.offsets[i];
+				});
 
-			// Load all actors
-			manifest.actors.forEach((actorParams) => {
-				stage.actors.push(getConfiguredActor(actorParams));
-			});
+				// Load all setpieces
+				manifest.setpieces.forEach((actorParams) => {
+					stage.setpieces.push(getConfiguredActor(actorParams));
+				});
 
-			// Bake the actors
-			stage.bakeSetpiece();
+				// Load all actors
+				manifest.actors.forEach((actorParams) => {
+					stage.actors.push(getConfiguredActor(actorParams));
+				});
+
+				// Bake the actors
+				stage.bakeSetpiece();
+			});
 		});
 
 	return stage;
@@ -192,15 +203,13 @@ async function loadContent(callback)
 	let manifest = {};
 	return safeFetch(MANIFEST_PATH).then((v) => {
 		manifest = JSON.parse(v);
-		return Promise.all(manifest.stages.map((stage) => {
-			return safeFetch(`content/${stage.url}`).then((stageManifest) => {
-				stageStore.push(JSON.parse(stageManifest));
-			});
-		}));
-	}).then(() => Promise.all(
-		['models/barrel_ornate.obj', 'models/cube.obj'] // TODO: load this array dynamically
-			.map(name => safeFetch(name).then(v => loadOBJToModelStore(name, v)))
-	))
-		.then(() => buildStage(0))
-		.then((stage) => { currentStage = stage; });
+		return Promise.all(manifest.stages.map(stage => safeFetch(`content/${stage.url}`)
+			.then(stageManifest => stageStore.push(JSON.parse(stageManifest)))));
+	})
+		.then(() => Promise.all(
+			['models/barrel_ornate.obj', 'models/cube.obj'].map(name => safeFetch(name).then(v => loadOBJToModelStore(name, v)))
+			// TODO: load models dynamically
+		))
+		.then(() => buildStage(0), () => console.error("OBJ Load error: fetch promise rejected"))
+		.then((stage) => { currentStage = stage; }, () => console.error("stage builder error: buildStage() promise rejected"));
 }

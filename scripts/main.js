@@ -378,30 +378,28 @@ function main()
 
 	// const texture = loadTexture(gl, 'firefox.png');
 	let texture = null;
-	loadTextureAtlas(null, ["firefoxsmol.png", "firefox.png", "firefoxsmol.png", "firefoxsmol.png", "firefoxverysmol.png"]).then((atlasData) => {
-		texture = textureFromBitmap(gl, atlasData.atlas);
+	texture = textureFromBitmap(gl, currentStage.textureAtlas);
 
-		initDefaultShaderProgram(gl)
-			.then((prog) => {
-				const programInfo = getProgramInfo(gl, prog);
+	initDefaultShaderProgram(gl)
+		.then((prog) => {
+			const programInfo = getProgramInfo(gl, prog);
 
-				attachInputListeners(gl);
+			attachInputListeners(gl);
 
-				let lastFrameSec = 0;
-				function render(timeMillis)
-				{
-					const timeSecs = timeMillis * 0.001; // convert to seconds
-					const deltaTime = timeSecs - lastFrameSec;
-					lastFrameSec = timeSecs;
+			let lastFrameSec = 0;
+			function render(timeMillis)
+			{
+				const timeSecs = timeMillis * 0.001; // convert to seconds
+				const deltaTime = timeSecs - lastFrameSec;
+				lastFrameSec = timeSecs;
 
-					currentStage.update(deltaTime, timeSecs);
-					drawStage(gl, currentStage, programInfo, texture);
-					requestAnimationFrame(render);
-				}
-
+				currentStage.update(deltaTime, timeSecs);
+				drawStage(gl, currentStage, programInfo, texture);
 				requestAnimationFrame(render);
-			});
-	});
+			}
+
+			requestAnimationFrame(render);
+		});
 }
 
 loadContent().then(main);
