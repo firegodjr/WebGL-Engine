@@ -1,18 +1,19 @@
 {
 	"preload": [
-		"actors/cubeActor.json"
+		"actors/cubeActor.json",
+		"actors/boxActor.json"
 	],
 	"setpieces": [
 		{
-			"name": "cubeActor",
-			"actorID": 0,
+			"name": "box",
+			"actorID": 1,
 			"position": [2,0,-9],
 			"rotation": [0,0,0],
 			"scale": [1,1,1]
 		},
 		{
-			"name": "cubeActor",
-			"actorID": 0,
+			"name": "box",
+			"actorID": 1,
 			"position": [-5,2,-12],
 			"rotation": [0,0,0],
 			"scale": [1,1,1]

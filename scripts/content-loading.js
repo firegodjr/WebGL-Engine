@@ -89,12 +89,12 @@ async function loadTextureAtlas(urls)
 				if (images[index.ref].naturalWidth === currSize)
 				{
 					ctx.drawImage(images[index.ref], xOffset + xProgress, yOffset + yProgress);
-					offsets.push([
+					offsets[images[index.ref].src.split('/').reverse()[0]] = [
 						xOffset / canvas.width,
 						yOffset / canvas.height,
 						(xOffset + currSize) / canvas.width,
 						(yOffset + currSize) / canvas.height
-					]);
+					];
 
 					xProgress += currSize;
 
@@ -118,10 +118,10 @@ async function loadTextureAtlas(urls)
 	let currentPower = 1;
 	/** @type {ImageBitmap} */
 	const canvas = document.createElement('canvas');
-	// TODO canvas.style.display = "none";
+	// TODO canvas.style.display = 'none';
 	document.body.appendChild(canvas);
 
-	await Promise.all(urls.map((url, i) => {
+	await Promise.all(urls.map((url) => {
 		const image = new Image();
 		loadedImgs.push(image);
 		return promiseImage(image, url);
@@ -140,13 +140,18 @@ async function loadTextureAtlas(urls)
 
 	canvas.width = 2 ** currentPower;
 	canvas.height = canvas.width;
-	const ctx = canvas.getContext("2d");
+	const ctx = canvas.getContext('2d');
 
 	tileImageSquare(canvas, ctx, offsets, 0, 0, loadedImgs[0].naturalWidth, loadedImgs, { ref: 0 });
 
+	const indexedOffsets = [];
+	urls.forEach((url) => {
+		indexedOffsets.push(offsets[url]);
+	});
+
 	return {
 		atlas: await createImageBitmap(ctx.getImageData(0, 0, canvas.width, canvas.height)),
-		offsets
+		offsets: indexedOffsets
 	};
 }
 
@@ -199,7 +204,7 @@ async function buildStage(index)
  */
 async function loadContent(callback)
 {
-	const MANIFEST_PATH = "content/manifest.json";
+	const MANIFEST_PATH = 'content/manifest.json';
 	let manifest = {};
 	return safeFetch(MANIFEST_PATH).then((v) => {
 		manifest = JSON.parse(v);
@@ -210,6 +215,6 @@ async function loadContent(callback)
 			['models/barrel_ornate.obj', 'models/cube.obj'].map(name => safeFetch(name).then(v => loadOBJToModelStore(name, v)))
 			// TODO: load models dynamically
 		))
-		.then(() => buildStage(0), () => console.error("OBJ Load error: fetch promise rejected"))
-		.then((stage) => { currentStage = stage; }, () => console.error("stage builder error: buildStage() promise rejected"));
+		.then(() => buildStage(0), () => console.error('OBJ Load error: fetch promise rejected'))
+		.then((stage) => { currentStage = stage; }, () => console.error('stage builder error: buildStage() promise rejected'));
 }
