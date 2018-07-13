@@ -378,7 +378,7 @@ function main()
 
 	// const texture = loadTexture(gl, 'firefox.png');
 	let texture = null;
-	loadTextureAtlas(null, ["firefoxsmol.png", "firefox.png", "firefoxsmol.png", "firefoxsmol.png"]).then((atlasData) => {
+	loadTextureAtlas(null, ["firefoxsmol.png", "firefox.png", "firefoxsmol.png", "firefoxsmol.png", "firefoxverysmol.png"]).then((atlasData) => {
 		texture = textureFromBitmap(gl, atlasData.atlas);
 
 		initDefaultShaderProgram(gl)

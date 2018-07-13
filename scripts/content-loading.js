@@ -76,6 +76,42 @@ function getImagePixelRGBA(imageData, x, y)
  */
 async function loadTextureAtlas(gl, urls)
 {
+	function tileImageSquare(canvas, ctx, offsets, xOffset, yOffset, currSize, images, index)
+	{
+		let xProgress = 0;
+		let yProgress = 0;
+
+		for (let j = 0; j < 4; ++j, ++index.ref)
+		{
+			if (index.ref < images.length)
+			{
+				if (images[index.ref].naturalWidth === currSize)
+				{
+					ctx.drawImage(images[index.ref], xOffset + xProgress, yOffset + yProgress);
+					offsets.push([
+						xOffset / canvas.width,
+						yOffset / canvas.height,
+						(xOffset + currSize) / canvas.width,
+						(yOffset + currSize) / canvas.height
+					]);
+
+					xProgress += currSize;
+
+					if (xProgress >= currSize * 2)
+					{
+						xProgress = 0;
+						yProgress += currSize;
+					}
+				}
+				else // if images[i].naturalWidth != currSize
+				{
+					tileImageSquare(canvas, ctx, offsets, xOffset + xProgress, yOffset + yProgress, currSize / 2, images, index);
+				}
+			}
+			else return; // if i >= images.length
+		}
+	}
+
 	const loadedImgs = [];
 	const offsets = [];
 	let currentPower = 9;
@@ -105,34 +141,7 @@ async function loadTextureAtlas(gl, urls)
 	canvas.height = canvas.width;
 	const ctx = canvas.getContext("2d");
 
-	let x = 0;
-	let y = 0;
-	let XOffset = 0;
-	let XOffsetThreshold = 0;
-
-	loadedImgs.forEach((image, index, imgs) => {
-
-		ctx.drawImage(image, y > XOffsetThreshold ? x : XOffset, y);
-
-		offsets.push([
-			x / canvas.width,
-			y / canvas.height,
-			(x + image.naturalWidth) / canvas.width,
-			(y + image.naturalHeight) / canvas.height
-		]);
-
-		if (x === canvas.width)
-		{
-			y += image.naturalHeight;
-			x = 0;
-		}
-
-		if (y >= XOffsetThreshold)
-		{
-			XOffset = x + image.naturalWidth;
-			XOffsetThreshold = y + image.naturalHeight;
-		}
-	});
+	tileImageSquare(canvas, ctx, offsets, 0, 0, loadedImgs[0].naturalWidth, loadedImgs, { ref: 0 });
 
 	return {
 		atlas: await createImageBitmap(ctx.getImageData(0, 0, canvas.width, canvas.height)),
