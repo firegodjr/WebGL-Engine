@@ -3,19 +3,22 @@ const actorStore = [];
 
 /**
  * Retrives a file from the web server. Rejects on non-Response.ok, and returns a promise to the body.
+ * If asJson = true, then the function will return a Promise to a function.
  * @param {string} filepath
- * @returns {Promise<string>}
+ * @returns {Promise<string> | Promise<object>}
  */
-async function safeFetch(filepath)
+async function safeFetch(filepath, asJson = false)
 {
-	return fetch(filepath)
-		.then((resp) => {
-			if (!resp.ok)
-			{
-				throw new Error(`Unsuccessful fetch of resource '${filepath}'`);
-			}
-			return resp.text();
-		});
+	const resp = await fetch(filepath);
+	if (!resp.ok)
+	{
+		throw new Error(`Unsuccessful fetch of resource '${filepath}'`);
+	}
+	if (asJson)
+	{
+		return resp.json();
+	}
+	return resp.text();
 }
 /**
  * Builds an actor object from actor parameters in a stage manifest
@@ -165,36 +168,34 @@ async function buildStage(index)
 	const manifest = stageStore[index];
 	const stage = new Stage(manifest.name);
 
-	// Load all stage prerequisites
-	await Promise.all(manifest.preload.map(url => safeFetch(`content/${url}`)
-		.then((actor) => {
-			const actorManifest = JSON.parse(actor);
-			actorStore.push(actorManifest);
-		})))
-		.then(() => {
-			// Create a texture atlas for the stage's actors
-			const urls = actorStore.map(a => a.texture);
-			return loadTextureAtlas(urls).then((atlas) => {
-				stage.textureAtlas = atlas.atlas;
-				// Record the new texture coordinate ranges
-				actorStore.forEach((actor, i) => {
-					actor.textureRange = atlas.offsets[i];
-				});
+	// eslint-disable-next-line prefer-arrow-callback
+	const actors = await Promise.all(manifest.preload.map(async function preloadMap(url, ind, arr) {
+		const actorManifest = await safeFetch(`content/${url}`, true);
+		actorStore.push(actorManifest);
+	}));
 
-				// Load all setpieces
-				manifest.setpieces.forEach((actorParams) => {
-					stage.setpieces.push(getConfiguredActor(actorParams));
-				});
+	// Create a texture atlas for the stage's actors
+	const urls = actorStore.map(a => a.texture);
+	const atlas = await loadTextureAtlas(urls);
+	stage.textureAtlas = atlas.atlas;
 
-				// Load all actors
-				manifest.actors.forEach((actorParams) => {
-					stage.actors.push(getConfiguredActor(actorParams));
-				});
+	// Record the new texture coordinate ranges
+	actorStore.forEach((actor, i) => {
+		actor.textureRange = atlas.offsets[i];
+	});
 
-				// Bake the actors
-				stage.bakeSetpiece();
-			});
-		});
+	// Load all setpieces
+	manifest.setpieces.forEach((actorParams) => {
+		stage.setpieces.push(getConfiguredActor(actorParams));
+	});
+
+	// Load all actors
+	manifest.actors.forEach((actorParams) => {
+		stage.actors.push(getConfiguredActor(actorParams));
+	});
+
+	// Bake the actors
+	stage.bakeSetpiece();
 
 	return stage;
 }
@@ -204,17 +205,29 @@ async function buildStage(index)
  */
 async function loadContent(callback)
 {
-	const MANIFEST_PATH = 'content/manifest.json';
-	let manifest = {};
-	return safeFetch(MANIFEST_PATH).then((v) => {
-		manifest = JSON.parse(v);
-		return Promise.all(manifest.stages.map(stage => safeFetch(`content/${stage.url}`)
-			.then(stageManifest => stageStore.push(JSON.parse(stageManifest)))));
-	})
-		.then(() => Promise.all(
-			['models/barrel_ornate.obj', 'models/cube.obj'].map(name => safeFetch(name).then(v => loadOBJToModelStore(name, v)))
-			// TODO: load models dynamically
-		))
-		.then(() => buildStage(0), () => console.error('OBJ Load error: fetch promise rejected'))
-		.then((stage) => { currentStage = stage; }, () => console.error('stage builder error: buildStage() promise rejected'));
+	try
+	{
+		const MANIFEST_PATH = "content/manifest.json";
+		const manifest = await safeFetch(MANIFEST_PATH, true);
+		// Stick all in same Promise.all so that network connections can run concurrently
+		await Promise.all([
+			...(manifest.stages.map(async function getStages(stage)
+			{
+				const manif = await safeFetch(`content/${stage.url}`, true);
+				stageStore.push(manif);
+			})),
+			...(['models/barrel_ornate.obj', 'models/cube.obj'
+			].map(async function loadObjs(modelPath)
+			{
+				const modelText = await safeFetch(modelPath);
+				loadOBJToModelStore(modelPath, modelText);
+			}))
+		]);
+		currentStage = await buildStage(0);
+	}
+	catch (e)
+	{
+		console.error('Error loading content!');
+		throw e;
+	}
 }

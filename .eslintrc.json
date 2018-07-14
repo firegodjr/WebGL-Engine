@@ -53,7 +53,8 @@
 		"lines-between-class-members": ["off"],
 		"no-underscore-dangle": ["off"],
 		"no-undef": ["warn"],
-		"no-eval": ["off"]
+		"no-eval": ["off"],
+		"prefer-arrow-callback": "off"
 	},
 	"root": true
 	
