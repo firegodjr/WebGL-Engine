@@ -135,7 +135,7 @@ export default class OBJModel
 							if (ind > 2) throw new RangeError('Cannot have more than 3 values for a vertex position!');
 							pos.push(parseFloat(value.trim()));
 						});
-						positions.push(vec3.fromValues(pos[0], pos[1], pos[3]));
+						positions.push(vec3.fromValues(pos[0], pos[1], pos[2]));
 						break;
 					}
 					case 'vn': { // Vertex Normal
