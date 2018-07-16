@@ -116,6 +116,7 @@ async function loadTextureAtlas(urls: string[]): Promise<TextureAtlas>
 	let currentPower = 1;
 	/** @type {ImageBitmap} */
 	const canvas = document.createElement('canvas');
+	canvas.style.display = "none";
 	// TODO canvas.style.display = 'none';
 	document.body.appendChild(canvas);
 

@@ -6,16 +6,14 @@ import { StageTemplate } from '../templates'
 import { TextureAtlas } from '../content-loading'
 
 import StageActor from './stage-actor'
-
-interface StageActorCollection extends Array<StageActor> {
-	camera: StageActor;
-}
+import Camera from "./camera"
 
 export default class Stage
 {
 	public readonly name: string;
 	public readonly setpieces: StageActor[];
-	public readonly actors: StageActorCollection;
+	public readonly actors: StageActor[];
+	public camera: Camera;
 	public bakedVertices: number[];
 	public bakedIndices: number[];
 	public textureAtlas: TextureAtlas;
@@ -31,8 +29,8 @@ export default class Stage
 		/** @type {{ [n: number]: StageActor} */
 		this.setpieces = setpieces;
 		/** @type {{ [n: number]: StageActor, camera: StageActor } */
-		this.actors = actors as StageActorCollection;
-		this.actors.camera = new StageActor('camera', DEFAULT_MODEL_NAME);
+		this.actors = actors;
+		this.camera = new Camera();
 		this.textureAtlas = textureAtlas;
 
 		/** @type { number[] } */
@@ -43,6 +41,7 @@ export default class Stage
 	update(deltaTime: number, elapsedTime: number)
 	{
 		this.actors.forEach(actor => actor.update(deltaTime, elapsedTime));
+		this.camera.update(deltaTime, elapsedTime);
 	}
 
 	/**

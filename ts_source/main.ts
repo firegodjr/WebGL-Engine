@@ -15,6 +15,8 @@ import { initDefaultShaderProgram, getProgramInfo, WebGLProgramInfo } from './sh
 
 import Transform from './stage_content/transform'
 import Stage from './stage_content/stage'
+import InputHandler from './input';
+import Camera, { CameraHandler } from './stage_content/camera';
 
 interface VertexIndexBuffers {
 	vertices: WebGLBuffer;
@@ -22,7 +24,7 @@ interface VertexIndexBuffers {
 	vertexCount: number;
 }
 
-let currentStage: Stage|null = null;
+let firstStage: Stage|null = null;
 
 /**
  * Gets the z-forward normal vector
@@ -111,6 +113,8 @@ function drawStage(gl: WebGLRenderingContext, stage: Stage, programInfo: WebGLPr
 {
 	gl.clearColor(...CLEAR_COLOR);
 	gl.clearDepth(1.0);
+	gl.enable(gl.CULL_FACE);
+	gl.cullFace(gl.BACK);
 	gl.enable(gl.DEPTH_TEST);
 	gl.depthFunc(gl.LEQUAL);
 
@@ -130,7 +134,7 @@ function drawStage(gl: WebGLRenderingContext, stage: Stage, programInfo: WebGLPr
 	// Tell Webgl how to pull out the positions from the position buffer into the
 	// vertexposition attribute
 	let viewMatrix = mat4.create();
-	const cameraTransform = stage.actors.camera.transform;
+	const cameraTransform = stage.camera.transform;
 	cameraTransform.updateModelMatrix();
 	mat4.lookAt(viewMatrix, cameraTransform.translation, getLookVector(cameraTransform), vec3.fromValues(0, 1, 0));
 
@@ -190,7 +194,6 @@ function loadTexture(gl: WebGLRenderingContext, url: string)
 	return texture;
 }
 
-
 function refreshCanvasSize(gl: WebGLRenderingContext)
 {
 	// Lookup the size the browser is displaying the canvas.
@@ -216,7 +219,7 @@ function attachInputListeners(gl: WebGLRenderingContext)
 /** Assigns the stage from the given index to *currentStage* and returns it as a Promise */
 export async function switchStage(index: number): Promise<Stage>
 {
-	return currentStage = await buildStage(index);
+	return firstStage = await buildStage(index);
 }
 
 // #endregion
@@ -226,6 +229,10 @@ function main(firstStage: Stage)
 	console.log('Starting program...');
 	const canvas = document.querySelector('#glCanvas') as HTMLCanvasElement;
 	const gl = canvas.getContext('webgl');
+	const inputHandler = new InputHandler(canvas);
+	const cameraHandler = new CameraHandler(firstStage.camera, inputHandler);
+
+	inputHandler.setCursorLock(true);
 
 	if (!gl)
 	{
@@ -239,9 +246,8 @@ function main(firstStage: Stage)
 
 	initDefaultShaderProgram(gl)
 		.then((prog) => {
-			currentStage = firstStage;
 			// const texture = loadTexture(gl, 'firefox.png');
-			let texture = textureFromBitmap(gl, currentStage.textureAtlas.atlas);
+			let texture = textureFromBitmap(gl, firstStage.textureAtlas.atlas);
 
 			const programInfo = getProgramInfo(gl, prog);
 
@@ -256,12 +262,12 @@ function main(firstStage: Stage)
 				const deltaTime = timeSecs - lastFrameSec;
 				lastFrameSec = timeSecs;
 
-				if (currentStage === null) {
+				if (firstStage === null) {
 					throw new Error(`CurrentStage somehow became null! The program cannot continue!`);
 				}
 
-				currentStage.update(deltaTime, timeSecs);
-				drawStage(gl, currentStage, programInfo, texture);
+				firstStage.update(deltaTime, timeSecs);
+				drawStage(gl, firstStage, programInfo, texture);
 				requestAnimationFrame(render);
 			}
 
@@ -271,4 +277,4 @@ function main(firstStage: Stage)
 
 loadContent().then(main);
 
-console.log('I think it all finished loading...?')
+console.log('Loading complete');

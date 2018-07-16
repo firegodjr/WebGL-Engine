@@ -6,8 +6,8 @@ export default class Transform
 {
 
 	public translation: vec3;
-	private rotation: quat;
-	private scale: vec3;
+	protected rotation: quat;
+	protected scale: vec3;
 	public modelMatrix: mat4;
 
 	/**
@@ -38,6 +38,7 @@ export default class Transform
 	set posY(value) { this.translation[1] = value; }
 	set posZ(value) { this.translation[2] = value; }
 
+	get rotationQuat() { return this.rotation }
 	get rotationX() { return quat.getAxisAngle([1, 0, 0], this.rotation); }
 	get rotationY() { return quat.getAxisAngle([0, 1, 0], this.rotation); }
 	get rotationZ() { return quat.getAxisAngle([0, 0, 1], this.rotation); }
@@ -74,4 +75,11 @@ export default class Transform
 			vec3.fromValues(scale[0], scale[1], scale[2])
 		)
 	}
+}
+export class CameraTransform extends Transform
+{
+	get rotationQuat() { return quat.fromEuler(quat.create(), this.rotationX, this.rotationY, 0); }
+	get rotationZ() { return 0; }
+	set rotationZ(value) {}
+	rotateZ(value: number) {}
 }
