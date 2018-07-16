@@ -62,19 +62,15 @@ export default class Transform
 		if (position.length != 3) {
 			throw new RangeError(`argument 'translation' not 3 elements long!`);
 		}
-		if (rotation.length === 3) {
-			console.error(`Applying shim to run game minimally. Inserting 1 to 'rotation' to let 'quat' get 4 values.`);
-			rotation.push(1);
-		}
-		if (rotation.length != 4) {
-			throw new RangeError(`argument 'rotation' not 4 elements long!`);
+		if (rotation.length != 3) {
+			throw new RangeError(`argument 'rotation' not 3 elements long!`);
 		}
 		if (scale.length != 3) {
 			throw new RangeError(`argument 'scale' not 3 elements long!`);
 		}
 		return new Transform(
 			vec3.fromValues(position[0], position[1], position[2]),
-			quat.fromValues(rotation[0], rotation[1], rotation[2], rotation[3]),
+			quat.fromEuler(quat.create(), rotation[0], rotation[1], rotation[2]),
 			vec3.fromValues(scale[0], scale[1], scale[2])
 		)
 	}
