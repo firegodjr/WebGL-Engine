@@ -25,7 +25,7 @@ export default class StageActor
 
 	update(deltaTime: number, elapsedTime: number)
 	{
-		this.transform.rotateY(deltaTime);
+		this.transform.rotateYaw(deltaTime);
 	}
 
 	onDestroy(deltaTime: number, elapsedTime: number) { }

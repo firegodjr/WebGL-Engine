@@ -1,5 +1,5 @@
 
-import { vec3, mat4, quat } from 'gl-matrix';
+import { vec2, vec3, mat4, quat } from 'gl-matrix';
 
 /** Stores data relating to the position, rotation and scale of an actor in a stage */
 export default class Transform
@@ -39,13 +39,13 @@ export default class Transform
 	set posZ(value) { this.translation[2] = value; }
 
 	get rotationQuat() { return this.rotation }
-	get rotationX() { return quat.getAxisAngle([1, 0, 0], this.rotation); }
-	get rotationY() { return quat.getAxisAngle([0, 1, 0], this.rotation); }
-	get rotationZ() { return quat.getAxisAngle([0, 0, 1], this.rotation); }
+	get rotationPitch() { return quat.getAxisAngle([1, 0, 0], this.rotation); }
+	get rotationYaw() { return quat.getAxisAngle([0, 1, 0], this.rotation); }
+	get rotationRoll() { return quat.getAxisAngle([0, 0, 1], this.rotation); }
 
-	set rotationX(value: number) { quat.rotateX(this.rotation, quat.create(), value); }
-	set rotationY(value: number) { quat.rotateY(this.rotation, quat.create(), value); }
-	set rotationZ(value: number) { quat.rotateZ(this.rotation, quat.create(), value); }
+	set rotationPitch(value: number) { quat.rotateX(this.rotation, quat.create(), value); }
+	set rotationYaw(value: number) { quat.rotateY(this.rotation, quat.create(), value); }
+	set rotationRoll(value: number) { quat.rotateZ(this.rotation, quat.create(), value); }
 
 	get scaleX() { return this.scale[0]; }
 	get scaleY() { return this.scale[1]; }
@@ -55,9 +55,9 @@ export default class Transform
 	set scaleY(value) { this.scale[1] = value; }
 	set scaleZ(value) { this.scale[2] = value; }
 
-	rotateX(value: number) { quat.rotateX(this.rotation, this.rotation, value); }
-	rotateY(value: number) { quat.rotateY(this.rotation, this.rotation, value); }
-	rotateZ(value: number) { quat.rotateZ(this.rotation, this.rotation, value); }
+	rotatePitch(value: number) { quat.rotateX(this.rotation, this.rotation, value); }
+	rotateYaw(value: number) { quat.rotateY(this.rotation, this.rotation, value); }
+	rotateRoll(value: number) { quat.rotateZ(this.rotation, this.rotation, value); }
 
 	static fromRawValues(position: number[], rotation: number[], scale: number[]): Transform {
 		if (position.length != 3) {
@@ -76,10 +76,57 @@ export default class Transform
 		)
 	}
 }
-export class CameraTransform extends Transform
+
+export class FPSCameraTransform extends Transform
 {
-	get rotationQuat() { return quat.fromEuler(quat.create(), this.rotationX, this.rotationY, 0); }
-	get rotationZ() { return 0; }
-	set rotationZ(value) {}
-	rotateZ(value: number) {}
+	protected rotationEuler: vec2 = vec2.create();
+
+	constructor(translation: vec3 = vec3.create(), rotation: vec2 = vec2.create())
+	{
+		super(translation, quat.create(), vec3.fromValues(1, 1, 1));
+		this.rotationEuler = rotation;
+	}
+
+	updateModelMatrix(): mat4
+	{
+		return mat4.fromRotationTranslationScale(this.modelMatrix, this.rotationQuat, this.translation, this.scale);
+	}
+
+	get rotationQuat() 
+	{ 
+		return quat.mul(
+			quat.create(), 
+			quat.setAxisAngle(quat.create(), vec3.fromValues(0, 1, 0), this.rotationEuler[1]), 
+			quat.setAxisAngle(quat.create(), vec3.fromValues(1, 0, 0), this.rotationEuler[0])
+		);
+	}
+
+	get rotationYawQuat()
+	{
+		return quat.setAxisAngle(quat.create(), [0, 1, 0], this.rotationEuler[1]);
+	}
+
+	get rotationPitch() { return this.rotationEuler[0]; }
+	get rotationYaw() { return this.rotationEuler[1]; }
+	get rotationRoll() { return 0; }
+
+	set rotationPitch(value: number) { this.rotationEuler[0] = value; }
+	set rotationYaw(value: number) { this.rotationEuler[1] = value; }
+	set rotationRoll(value: number) { console.error("Attempted to set roll in an fps camera"); }
+
+	rotatePitch(value: number) 
+	{ 
+		if(this.rotationEuler[0] + value > Math.PI / 2) 
+		{
+			this.rotationEuler[0] = Math.PI / 2 - .01;
+		}
+		else if(this.rotationEuler[0] + value < -Math.PI / 2)
+		{
+			this.rotationEuler[0] = -Math.PI / 2 + .01;
+		}
+		else this.rotationEuler[0] += value; 
+	}
+
+	rotateYaw(value: number) { this.rotationEuler[1] += value; }
+	rotateRoll(value: number) { console.error("Attempted to set roll in an fps camera"); }
 }

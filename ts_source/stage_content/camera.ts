@@ -1,15 +1,15 @@
-import { vec3, quat } from "gl-matrix"
+import { vec2, vec3, quat } from "gl-matrix"
 import StageActor from "stage-actor"
 import InputHandler from "../input"
-import CameraTransform from "./transform"
+import { FPSCameraTransform } from "./transform"
 
 export default class Camera
 {
-	public transform = new CameraTransform();
+	public transform: FPSCameraTransform;
 
-	constructor()
+	constructor(translation: vec3 = vec3.create(), rotation: vec2 = vec2.create())
 	{
-		
+		this.transform = new FPSCameraTransform(translation, rotation);
 	}
 
 	update(deltaTime: number, elapsedTime: number) {}
@@ -32,7 +32,7 @@ export class CameraHandler
 	update(deltaTime: number, elapsedTime: number)
 	{
 		let normal: vec3 = vec3.normalize(vec3.create(), this.velocity);
-		let rotatedNormal: vec3 = vec3.transformQuat(vec3.create(), normal, this.camera.transform.rotationQuat);
+		let rotatedNormal: vec3 = vec3.transformQuat(vec3.create(), normal, this.camera.transform.rotationYawQuat);
 
 		vec3.add(
 			this.camera.transform.translation,
@@ -57,6 +57,12 @@ export class CameraHandler
 			case 'D':
 				this.velocity[0] = 1;
 				break;
+			case ' ':
+				this.velocity[1] = 1;
+				break;
+			case 'C':
+				this.velocity[1] = -1;
+				break;
 		}
 	}
 
@@ -76,12 +82,18 @@ export class CameraHandler
 			case 'D':
 				this.velocity[0] = 0;
 				break;
+			case ' ':
+				this.velocity[1] = 0;
+				break;
+			case 'C':
+				this.velocity[1] = 0;
+				break;
 		}
 	}
 
 	updateRotation(e: MouseEvent)
 	{
-		this.camera.transform.rotateX(e.movementY / 300);
-		this.camera.transform.rotateY(e.movementX / 300);
+		this.camera.transform.rotatePitch(-e.movementY / 300);
+		this.camera.transform.rotateYaw(-e.movementX / 300);
 	}
 }

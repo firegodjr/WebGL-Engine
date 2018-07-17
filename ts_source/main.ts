@@ -232,8 +232,6 @@ function main(firstStage: Stage)
 	const inputHandler = new InputHandler(canvas);
 	const cameraHandler = new CameraHandler(firstStage.camera, inputHandler);
 
-	inputHandler.setCursorLock(true);
-
 	if (!gl)
 	{
 		console.error(canvas.innerText = 'Unable to initialize WebGL. Your browser or machine may not support it.');

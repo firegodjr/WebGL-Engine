@@ -7,7 +7,6 @@ export default class InputHandler
 	private onMouseMoveHandlers: Function[] = [];
 	private onMouseDownHandlers: Function[] = [];
 	private onMouseUpHandlers: Function[] = [];
-	private cursorLocked: boolean = false;
 
 	constructor(canvas: HTMLCanvasElement)
 	{
@@ -27,8 +26,11 @@ export default class InputHandler
 
 	public setCursorLock(locked: boolean)
 	{
-		locked ? this.canvas.requestPointerLock() : document.exitPointerLock();
-		this.cursorLocked = locked;
+		if(locked)
+		{
+			this.canvas.requestPointerLock();
+		}
+		else document.exitPointerLock();
 	}
 
 // #region handler registration
@@ -67,30 +69,30 @@ export default class InputHandler
 
 // #region events
 
-	private onKeyPress(e: Event)
+	private onKeyPress(e: KeyboardEvent)
 	{
 		this.onKeyPressHandlers.forEach(handler => {
 			handler(e);
 		});
 	}
 
-	private onKeyDown(e: Event)
+	private onKeyDown(e: KeyboardEvent)
 	{
 		this.onKeyDownHandlers.forEach(handler => {
 			handler(e);
 		});
 	}
 
-	private onKeyUp(e: Event)
+	private onKeyUp(e: KeyboardEvent)
 	{
 		this.onKeyUpHandlers.forEach(handler => {
 			handler(e);
 		});
 	}
 
-	private onMouseMove(e: Event)
+	private onMouseMove(e: KeyboardEvent)
 	{
-		if(this.cursorLocked)
+		if(document.pointerLockElement === this.canvas)
 		{
 			this.onMouseMoveHandlers.forEach(handler => {
 				handler(e);
@@ -98,18 +100,25 @@ export default class InputHandler
 		}
 	}
 
-	private onMouseDown(e: Event)
+	private onMouseDown(e: KeyboardEvent)
 	{
-		this.onMouseDownHandlers.forEach(handler => {
-			handler(e);
-		});
+		if(document.pointerLockElement === this.canvas)
+		{
+			this.onMouseDownHandlers.forEach(handler => {
+				handler(e);
+			});
+		}
+		else this.canvas.requestPointerLock();
 	}
 
-	private onMouseUp(e: Event)
+	private onMouseUp(e: KeyboardEvent)
 	{
-		this.onMouseUpHandlers.forEach(handler => {
-			handler(e);
-		});
+		if(document.pointerLockElement === this.canvas)
+		{
+			this.onMouseUpHandlers.forEach(handler => {
+				handler(e);
+			});
+		}
 	}
 
 	// #endregion events
