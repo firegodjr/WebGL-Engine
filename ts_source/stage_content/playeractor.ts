@@ -25,9 +25,8 @@ export default class PlayerController
 
 	update(deltaTime: number, elapsedTime: number)
 	{
-		this.velocity[2] += this.getMomentum(deltaTime, this.backPressed, this.forwardPressed, this.velocity[2]);
-		this.velocity[1] += this.getMomentum(deltaTime, this.upPressed, this.downPressed, this.velocity[1]);
-		this.velocity[0] += this.getMomentum(deltaTime, this.rightPressed, this.leftPressed, this.velocity[0]);
+		vec3.add(this.velocity, this.velocity, this.getAcceleration(2));
+		vec3.scale(this.velocity, this.velocity, 0.8);
 
 		vec3.add(
 			this.camera.transform.translation,
@@ -36,29 +35,37 @@ export default class PlayerController
 		);
 	}
 
-	getMomentum(deltaTime: number, forward: boolean, back: boolean, velocity: number, friction: number = 1)
+	getAcceleration(deltaTime: number, friction: number = 1)
 	{
-		let number = 0;
+		let acceleration = vec3.create();
 
-		if(forward)
+		if(this.forwardPressed)
 		{
-			if(velocity < 1)
-			{
-				number = 2 / (Math.abs(velocity) * friction + 1);
-			}
+			acceleration[2] -= 1;
 		}
-		else if(back)
+		if(this.backPressed)
 		{
-			if(velocity > -1)
-			{
-				number = -2 / (Math.abs(velocity) * friction + 1);
-			}
+			acceleration[2] += 1;
 		}
-		else
+		if(this.leftPressed)
 		{
-			number = -2 * velocity * 5 * friction;
+			acceleration[0] -= 1;
 		}
-		return number * deltaTime;
+		if(this.rightPressed)
+		{
+			acceleration[0] += 1;
+		}
+		if(this.upPressed)
+		{
+			acceleration[1] += 1;
+		}
+		if(this.downPressed)
+		{
+			acceleration[1] -= 1;
+		}
+
+		vec3.normalize(acceleration, acceleration);
+		return vec3.scale(vec3.create(), acceleration, deltaTime / 25);
 	}
 
 	beginMovement(e: KeyboardEvent)

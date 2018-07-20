@@ -8300,27 +8300,32 @@ class PlayerController {
         inputHandler.addToMouseMove(this.updateRotation.bind(this));
     }
     update(deltaTime, elapsedTime) {
-        this.velocity[2] += this.getMomentum(deltaTime, this.backPressed, this.forwardPressed, this.velocity[2]);
-        this.velocity[1] += this.getMomentum(deltaTime, this.upPressed, this.downPressed, this.velocity[1]);
-        this.velocity[0] += this.getMomentum(deltaTime, this.rightPressed, this.leftPressed, this.velocity[0]);
+        gl_matrix__WEBPACK_IMPORTED_MODULE_0__["vec3"].add(this.velocity, this.velocity, this.getAcceleration(2));
+        gl_matrix__WEBPACK_IMPORTED_MODULE_0__["vec3"].scale(this.velocity, this.velocity, 0.8);
         gl_matrix__WEBPACK_IMPORTED_MODULE_0__["vec3"].add(this.camera.transform.translation, this.camera.transform.translation, gl_matrix__WEBPACK_IMPORTED_MODULE_0__["vec3"].transformQuat(gl_matrix__WEBPACK_IMPORTED_MODULE_0__["vec3"].create(), this.velocity, this.camera.transform.rotationYawQuat));
     }
-    getMomentum(deltaTime, forward, back, velocity) {
-        let number = 0;
-        if (forward) {
-            if (velocity < 1) {
-                number = 2 / (Math.abs(velocity) + 1);
-            }
+    getAcceleration(deltaTime, friction = 1) {
+        let acceleration = gl_matrix__WEBPACK_IMPORTED_MODULE_0__["vec3"].create();
+        if (this.forwardPressed) {
+            acceleration[2] -= 1;
         }
-        else if (back) {
-            if (velocity > -1) {
-                number = -2 / (Math.abs(velocity) + 1);
-            }
+        if (this.backPressed) {
+            acceleration[2] += 1;
         }
-        else {
-            number = -2 * velocity * 5;
+        if (this.leftPressed) {
+            acceleration[0] -= 1;
         }
-        return number * deltaTime;
+        if (this.rightPressed) {
+            acceleration[0] += 1;
+        }
+        if (this.upPressed) {
+            acceleration[1] += 1;
+        }
+        if (this.downPressed) {
+            acceleration[1] -= 1;
+        }
+        gl_matrix__WEBPACK_IMPORTED_MODULE_0__["vec3"].normalize(acceleration, acceleration);
+        return gl_matrix__WEBPACK_IMPORTED_MODULE_0__["vec3"].scale(gl_matrix__WEBPACK_IMPORTED_MODULE_0__["vec3"].create(), acceleration, deltaTime / 25);
     }
     beginMovement(e) {
         switch (String.fromCharCode(e.keyCode)) {
