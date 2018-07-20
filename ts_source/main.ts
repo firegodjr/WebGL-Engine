@@ -15,8 +15,9 @@ import { initDefaultShaderProgram, getProgramInfo, WebGLProgramInfo } from './sh
 
 import Transform from './stage_content/transform'
 import Stage from './stage_content/stage'
-import InputHandler from './input';
-import Camera, { CameraHandler } from './stage_content/camera';
+import InputHandler from './input'
+import Camera from './stage_content/camera'
+import PlayerController from './stage_content/playeractor'
 
 interface VertexIndexBuffers {
 	vertices: WebGLBuffer;
@@ -123,7 +124,7 @@ function drawStage(gl: WebGLRenderingContext, stage: Stage, programInfo: WebGLPr
 
 	// Create a projection matrix
 	const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
-	const fieldOfView = Math.PI / 4;
+	const fieldOfView = Math.PI / 3;
 	const zNear = 0.1;
 	const zFar = 100.0;
 	const projectionMatrix = mat4.create();
@@ -230,7 +231,7 @@ function main(firstStage: Stage)
 	const canvas = document.querySelector('#glCanvas') as HTMLCanvasElement;
 	const gl = canvas.getContext('webgl');
 	const inputHandler = new InputHandler(canvas);
-	const cameraHandler = new CameraHandler(firstStage.camera, inputHandler);
+	const cameraHandler = new PlayerController(firstStage.camera, inputHandler);
 
 	if (!gl)
 	{
