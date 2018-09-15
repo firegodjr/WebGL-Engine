@@ -24,6 +24,9 @@ export default class Transform
 		this.modelMatrix = mat4.create();
 	}
 
+	/**
+	 * Creates/updates the model matrix of this transform and returns it
+	 */
 	updateModelMatrix(): mat4
 	{
 		return mat4.fromRotationTranslationScale(this.modelMatrix, this.rotation, this.translation, this.scale);
@@ -59,6 +62,12 @@ export default class Transform
 	rotateYaw(value: number) { quat.rotateY(this.rotation, this.rotation, value); }
 	rotateRoll(value: number) { quat.rotateZ(this.rotation, this.rotation, value); }
 
+	/**
+	 * Creates a transform from position, rotation, and scale vectors
+	 * @param position 
+	 * @param rotation 
+	 * @param scale 
+	 */
 	static fromRawValues(position: number[], rotation: number[], scale: number[]): Transform {
 		if (position.length != 3) {
 			throw new RangeError(`argument 'translation' not 3 elements long!`);
@@ -77,6 +86,10 @@ export default class Transform
 	}
 }
 
+/**
+ * A specialized transform that handles rotation differently
+ * to make an FPS control scheme easier
+ */
 export class FPSCameraTransform extends Transform
 {
 	protected rotationEuler: vec2 = vec2.create();

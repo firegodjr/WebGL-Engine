@@ -28,7 +28,8 @@ interface VertexIndexBuffers {
 let firstStage: Stage|null = null;
 
 /**
- * Gets the z-forward normal vector
+ * Gets the z-forward normal vector from a Transform
+ * @param transform
  */
 function getLookVector(transform: Transform)
 {
@@ -157,6 +158,12 @@ function drawStage(gl: WebGLRenderingContext, stage: Stage, programInfo: WebGLPr
 
 // #region utilities
 
+/**
+ * Loads a texture into the webgl context
+ * @param gl 
+ * @param url 
+ * @returns WebGLTexture
+ */
 function loadTexture(gl: WebGLRenderingContext, url: string)
 {
 	const texture = gl.createTexture();
@@ -195,6 +202,10 @@ function loadTexture(gl: WebGLRenderingContext, url: string)
 	return texture;
 }
 
+/**
+ * Updates the canvas size based on the window size
+ * @param gl 
+ */
 function refreshCanvasSize(gl: WebGLRenderingContext)
 {
 	// Lookup the size the browser is displaying the canvas.
@@ -212,6 +223,10 @@ function refreshCanvasSize(gl: WebGLRenderingContext)
 	}
 }
 
+/**
+ * Attach essential listeners to the window
+ * @param gl 
+ */
 function attachInputListeners(gl: WebGLRenderingContext)
 {
 	window.onresize = function onWindowResize() { refreshCanvasSize(gl); };

@@ -161,15 +161,20 @@ async function loadTextureAtlas(urls: string[]): Promise<TextureAtlas>
  */
 export async function buildStage(index: number): Promise<Stage>
 {
+	// Get the manifest for the stage we're trying to load
 	const stageManifest = stageStore[index];
 	//const stage_name = stageManifest.name;
 	const stage_name = 'lmao';
 
+	// Asynchronously load all actors needed for the stage
 	// eslint-disable-next-line prefer-arrow-callback
-	await Promise.all(stageManifest.preload.map(async function preloadActor(url, ind, arr) {
-		const actorTempl = await safeFetch<SerializedActor>(`content/${url}`, true);
-		actorStore.push(actorTempl);
-	}));
+	await Promise.all(stageManifest.preload.map(
+		async function preloadActor(url, ind, arr) 
+		{
+			const actorTempl = await safeFetch<SerializedActor>(`content/${url}`, true);
+			actorStore.push(actorTempl);
+		}
+	));
 
 	// Create a texture atlas for the stage's actors
 	const urls = actorStore.map(a => a.texture);
@@ -187,8 +192,10 @@ export async function buildStage(index: number): Promise<Stage>
 	// Load all actors
 	const stage_actors = stageManifest.actors.map(params => getConfiguredActor(params));
 
+	// Instantiate the stage
 	const stage = new Stage(stage_name, stage_setpieces, stage_actors, stage_textureAtlas)
-	// Bake the actors
+	
+	// Bake the setpieces into a single horrible object
 	stage.bakeSetpiece();
 
 	return stage;

@@ -21,13 +21,29 @@ export default class StageActor
 		this.textureRange = textureRange || [0, 0, 1, 1]
 	}
 
+	/**
+	 * Occurs when the object is created
+	 * @param deltaTime 
+	 * @param elapsedTime 
+	 */
 	init(deltaTime: number, elapsedTime: number) { }
 
+	/**
+	 * Occurs every frame
+	 * @param deltaTime 
+	 * @param elapsedTime 
+	 */
 	update(deltaTime: number, elapsedTime: number)
 	{
+		// TEMP
 		this.transform.rotateYaw(deltaTime);
 	}
 
+	/**
+	 * Occurs when the object is destroyed
+	 * @param deltaTime 
+	 * @param elapsedTime 
+	 */
 	onDestroy(deltaTime: number, elapsedTime: number) { }
 
 	/** Returns the vertices of this actor's model */
@@ -37,9 +53,10 @@ export default class StageActor
 		{
 			throw new Error(`Attempted to get vertices of non-loaded model '${this.modelName}'.`);
 		}
-		return modelStore[this.modelName].atlasTexcoordVertices(this.textureRange);
+		return modelStore[this.modelName].getVerticesWithAtlasTexcoords(this.textureRange);
 	}
 
+	/** Returns the indices of this actor's model */
 	get indices()
 	{
 		if (modelStore[this.modelName] === undefined)
@@ -58,7 +75,7 @@ export default class StageActor
 		{
 			throw new Error(`Attempted to get vertices of non-loaded model '${this.modelName}'.`);
 		}
-		return modelStore[this.modelName].transformedVertices(this.transform.updateModelMatrix(), this.textureRange);
+		return modelStore[this.modelName].getTransformedVertices(this.transform.updateModelMatrix(), this.textureRange);
 	}
 	
 	/* unused

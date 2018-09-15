@@ -16,9 +16,10 @@ export interface WebGLProgramInfo {
 	}
 }
 
-// Requests and returns a fully compiled shader object
 /**
- * This function accepts a promise for a string, and loads the specified shader into the GL context once the promise is resolved.
+ * This function accepts a promise for a string, and loads the specified shader
+ * into the GL context once the promise is resolved.
+ * @returns shader index
  */
 function loadShader(gl: WebGLRenderingContext, type: number, source: string): WebGLShader
 {

@@ -9,10 +9,13 @@ interface OBJModelDummy {
 	name?: string;
 	positions: vec3[];
 	texCoords: vec2[];
-	normals: vec3[];
+  normals: vec3[];
 	indices: number[];
 }
 
+/**
+ * The object representation of an .obj model
+ */
 export default class OBJModel
 {
 	public readonly name: string;
@@ -35,7 +38,7 @@ export default class OBJModel
 	 * @param {mat4} modelMatrix
 	 * @returns {number[]}
 	 */
-	transformedVertices(modelMatrix: mat4 = mat4.create(), textureRange?: NumberQuad): number[]
+	getTransformedVertices(modelMatrix: mat4 = mat4.create(), textureRange?: NumberQuad): number[]
 	{
 		function offsetTexCoords(texCoord: vec2, range: NumberQuad)
 		{
@@ -61,10 +64,18 @@ export default class OBJModel
 		return vertices;
 	}
 
-	atlasTexcoordVertices(textureRange?: NumberQuad): number[]
+	/**
+	 * Returns vertices with offset texcoords to work with the texture atlas
+	 * @param textureRange
+	 */
+	getVerticesWithAtlasTexcoords(textureRange?: NumberQuad): number[]
 	{
-		return this.transformedVertices(undefined, textureRange);
+		return this.getTransformedVertices(undefined, textureRange);
 	}
+
+	/**
+	 * Normalizes the vertex indices of the model to start at 0
+	 */
 	normalizeIndices(): void {
 		const baseIndex = this.indices[0];
 		for (let i = 0; i < this.indices.length; ++i)
@@ -73,8 +84,10 @@ export default class OBJModel
 		}
 	}
 
-	/** Returns the vertices of this model. */
-	get vertices() { return this.transformedVertices(); }
+	/** 
+	 * Returns the vertices of this model.
+	 */
+	get vertices() { return this.getTransformedVertices(); }
 
 	static fromDummy(dummy: OBJModelDummy): OBJModel {
 		(['name', 'positions', 'texCoords', 'normals', 'indices'] as Array<keyof OBJModelDummy>).forEach((name) => {
@@ -85,6 +98,11 @@ export default class OBJModel
 		return new OBJModel(v.name, v.positions, v.texCoords, v.normals, v.indices);
 	}
 
+	/**
+	 * Loads an .obj file as an ObjModel object
+	 * @param filename 
+	 * @param raw 
+	 */
 	static fromFile(filename: string, raw: string): OBJModel[] {
 		// const DEFAULT_POSITION = [0, 0, 0];
 		const DEFAULT_TEXCOORD: [number, number] = [0, 0];
@@ -102,14 +120,18 @@ export default class OBJModel
 			indices: []
 		};
 
+		// An array of objects stored in this .obj file
 		const objs: OBJModel[] = [];
 
 		const lines = raw.split('\n');
+		// For each line in the .obj file
 		for (let i = 0; i < lines.length; ++i)
 		{
+			// Split it into tokens
 			const tokens = lines[i].split(' ');
 			const trimmed = lines[i];
 
+			// If this line isn't blank and isn't a comment
 			if (trimmed.length !== 0 && !trimmed.startsWith('#'))
 			{
 				switch (tokens[0])

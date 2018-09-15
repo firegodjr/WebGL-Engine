@@ -8,6 +8,9 @@ import { TextureAtlas } from '../content-loading'
 import StageActor from './stage-actor'
 import Camera from "./camera"
 
+/**
+ * Contains actors, setpieces, and a camera, and can update them each frame
+ */
 export default class Stage
 {
 	public readonly name: string;
@@ -38,6 +41,11 @@ export default class Stage
 		this.bakedIndices = [];
 	}
 
+	/**
+	 * Updates every object in the 
+	 * @param deltaTime 
+	 * @param elapsedTime 
+	 */
 	update(deltaTime: number, elapsedTime: number)
 	{
 		this.actors.forEach(actor => actor.update(deltaTime, elapsedTime));
