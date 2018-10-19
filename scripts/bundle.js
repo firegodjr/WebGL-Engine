@@ -7438,6 +7438,7 @@ function getConfiguredActor(actorParams) {
     const template = _globals__WEBPACK_IMPORTED_MODULE_0__["actorStore"][actorParams.actorID];
     const actor = new _stage_content_stage_actor__WEBPACK_IMPORTED_MODULE_4__["default"](template.name, template.modelName, template.textureRange);
     actor.transform = _stage_content_transform__WEBPACK_IMPORTED_MODULE_2__["default"].fromRawValues(actorParams.position, actorParams.rotation, actorParams.scale);
+    actor.update = eval(template.script);
     return actor;
 }
 function loadedImageElement(src) {
@@ -7506,24 +7507,32 @@ function loadTextureAtlas(urls) {
         const offsets = {};
         let currentPower = 1;
         /** @type {ImageBitmap} */
+        // Create the canvas that will draw the atlas
         const canvas = document.createElement('canvas');
+        // Hide the canvas so the user can't see it
         canvas.style.display = "none";
-        // TODO canvas.style.display = 'none';
+        // Add the canvas to the page
         document.body.appendChild(canvas);
+        // Load every image we're going to atlas
         const loadedImgs = yield Promise.all(urls.map((url) => loadedImageElement(url)));
+        // Sort all the images by size
         loadedImgs.sort(sortImageSizes);
+        // Sum of all pixels we'll draw
         let pixelSum = 0;
         loadedImgs.forEach((img) => { pixelSum += img.naturalWidth * img.naturalHeight; });
-        // Find the optimal power of 2 to use
+        // Find the optimal power of 2 to use for the initial canvas
         while (Math.pow(2, currentPower) < Math.sqrt(pixelSum)) {
             ++currentPower;
         }
+        // Sets the canvas to the size we determined
         canvas.width = Math.pow(2, currentPower);
         canvas.height = canvas.width;
         const ctx = canvas.getContext('2d');
         if (ctx === null)
-            throw new TypeError('WebGL 2D context cannot be null!');
+            throw new TypeError('Canvas context cannot be null!');
+        // Generate the atlas
         tileImageSquare(canvas, ctx, offsets, 0, 0, loadedImgs[0].naturalWidth, loadedImgs, { ref: 0 });
+        // Get the offsets for each texture
         const indexedOffsets = new Array(urls.length);
         urls.forEach((url, ind) => {
             indexedOffsets[ind] = offsets[url];
@@ -7540,14 +7549,19 @@ function loadTextureAtlas(urls) {
  */
 function buildStage(index) {
     return __awaiter(this, void 0, void 0, function* () {
+        // Get the manifest for the stage we're trying to load
         const stageManifest = _globals__WEBPACK_IMPORTED_MODULE_0__["stageStore"][index];
         //const stage_name = stageManifest.name;
-        const stage_name = 'lmao';
+        const stage_name = stageManifest.name;
+        // Asynchronously load all actors needed for the stage
         // eslint-disable-next-line prefer-arrow-callback
         yield Promise.all(stageManifest.preload.map(function preloadActor(url, ind, arr) {
             return __awaiter(this, void 0, void 0, function* () {
                 const actorTempl = yield Object(_utils__WEBPACK_IMPORTED_MODULE_1__["safeFetch"])(`content/${url}`, true);
-                _globals__WEBPACK_IMPORTED_MODULE_0__["actorStore"].push(actorTempl);
+                if (actorTempl.script != undefined) {
+                    actorTempl.script = yield Object(_utils__WEBPACK_IMPORTED_MODULE_1__["safeFetch"])(`content/actors/${actorTempl.script}`, false);
+                }
+                _globals__WEBPACK_IMPORTED_MODULE_0__["actorStore"][ind] = actorTempl;
             });
         }));
         // Create a texture atlas for the stage's actors
@@ -7562,8 +7576,9 @@ function buildStage(index) {
         const stage_setpieces = stageManifest.setpieces.map(params => getConfiguredActor(params));
         // Load all actors
         const stage_actors = stageManifest.actors.map(params => getConfiguredActor(params));
+        // Instantiate the stage
         const stage = new _stage_content_stage__WEBPACK_IMPORTED_MODULE_3__["default"](stage_name, stage_setpieces, stage_actors, stage_textureAtlas);
-        // Bake the actors
+        // Bake the setpieces into a single horrible object
         stage.bakeSetpiece();
         return stage;
     });
@@ -7779,7 +7794,8 @@ var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _argume
 
 let firstStage = null;
 /**
- * Gets the z-forward normal vector
+ * Gets the z-forward normal vector from a Transform
+ * @param transform
  */
 function getLookVector(transform) {
     const zNormal = gl_matrix__WEBPACK_IMPORTED_MODULE_0__["vec3"].fromValues(0, 0, -1);
@@ -7879,6 +7895,12 @@ function drawStage(gl, stage, programInfo, texture) {
     });
 }
 // #region utilities
+/**
+ * Loads a texture into the webgl context
+ * @param gl
+ * @param url
+ * @returns WebGLTexture
+ */
 function loadTexture(gl, url) {
     const texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -7908,6 +7930,10 @@ function loadTexture(gl, url) {
     image.src = `textures/${url}`;
     return texture;
 }
+/**
+ * Updates the canvas size based on the window size
+ * @param gl
+ */
 function refreshCanvasSize(gl) {
     // Lookup the size the browser is displaying the canvas.
     const displayWidth = window.innerWidth;
@@ -7921,6 +7947,10 @@ function refreshCanvasSize(gl) {
         gl.viewport(0, 0, displayWidth, displayHeight);
     }
 }
+/**
+ * Attach essential listeners to the window
+ * @param gl
+ */
 function attachInputListeners(gl) {
     window.onresize = function onWindowResize() { refreshCanvasSize(gl); };
 }
@@ -7993,9 +8023,10 @@ var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _argume
     });
 };
 
-// Requests and returns a fully compiled shader object
 /**
- * This function accepts a promise for a string, and loads the specified shader into the GL context once the promise is resolved.
+ * This function accepts a promise for a string, and loads the specified shader
+ * into the GL context once the promise is resolved.
+ * @returns shader index
  */
 function loadShader(gl, type, source) {
     const shader = gl.createShader(type);
@@ -8109,6 +8140,9 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "default", function() { return OBJModel; });
 /* harmony import */ var gl_matrix__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! gl-matrix */ "./node_modules/gl-matrix/src/gl-matrix.js");
 
+/**
+ * The object representation of an .obj model
+ */
 class OBJModel {
     constructor(name, positions, texCoords, normals, indices) {
         this.name = name;
@@ -8122,7 +8156,7 @@ class OBJModel {
      * @param {mat4} modelMatrix
      * @returns {number[]}
      */
-    transformedVertices(modelMatrix = gl_matrix__WEBPACK_IMPORTED_MODULE_0__["mat4"].create(), textureRange) {
+    getTransformedVertices(modelMatrix = gl_matrix__WEBPACK_IMPORTED_MODULE_0__["mat4"].create(), textureRange) {
         function offsetTexCoords(texCoord, range) {
             const X = (range[2] - range[0]) * texCoord[0] + range[0];
             const Y = (range[3] - range[1]) * texCoord[1] + range[1];
@@ -8136,17 +8170,26 @@ class OBJModel {
         }
         return vertices;
     }
-    atlasTexcoordVertices(textureRange) {
-        return this.transformedVertices(undefined, textureRange);
+    /**
+     * Returns vertices with offset texcoords to work with the texture atlas
+     * @param textureRange
+     */
+    getVerticesWithAtlasTexcoords(textureRange) {
+        return this.getTransformedVertices(undefined, textureRange);
     }
+    /**
+     * Normalizes the vertex indices of the model to start at 0
+     */
     normalizeIndices() {
         const baseIndex = this.indices[0];
         for (let i = 0; i < this.indices.length; ++i) {
             this.indices[i] -= baseIndex;
         }
     }
-    /** Returns the vertices of this model. */
-    get vertices() { return this.transformedVertices(); }
+    /**
+     * Returns the vertices of this model.
+     */
+    get vertices() { return this.getTransformedVertices(); }
     static fromDummy(dummy) {
         ['name', 'positions', 'texCoords', 'normals', 'indices'].forEach((name) => {
             if ((dummy[name]) === undefined)
@@ -8155,6 +8198,11 @@ class OBJModel {
         let v = dummy;
         return new OBJModel(v.name, v.positions, v.texCoords, v.normals, v.indices);
     }
+    /**
+     * Loads an .obj file as an ObjModel object
+     * @param filename
+     * @param raw
+     */
     static fromFile(filename, raw) {
         // const DEFAULT_POSITION = [0, 0, 0];
         const DEFAULT_TEXCOORD = [0, 0];
@@ -8171,11 +8219,15 @@ class OBJModel {
             normals: [],
             indices: []
         };
+        // An array of objects stored in this .obj file
         const objs = [];
         const lines = raw.split('\n');
+        // For each line in the .obj file
         for (let i = 0; i < lines.length; ++i) {
+            // Split it into tokens
             const tokens = lines[i].split(' ');
             const trimmed = lines[i];
+            // If this line isn't blank and isn't a comment
             if (trimmed.length !== 0 && !trimmed.startsWith('#')) {
                 switch (tokens[0]) {
                     case 'o': { // Name
@@ -8402,18 +8454,35 @@ class StageActor {
         this.transform = new _transform__WEBPACK_IMPORTED_MODULE_1__["default"]();
         this.textureRange = textureRange || [0, 0, 1, 1];
     }
+    /**
+     * Occurs when the object is created
+     * @param deltaTime
+     * @param elapsedTime
+     */
     init(deltaTime, elapsedTime) { }
+    /**
+     * Occurs every frame
+     * @param deltaTime
+     * @param elapsedTime
+     */
     update(deltaTime, elapsedTime) {
+        // TEMP
         this.transform.rotateYaw(deltaTime);
     }
+    /**
+     * Occurs when the object is destroyed
+     * @param deltaTime
+     * @param elapsedTime
+     */
     onDestroy(deltaTime, elapsedTime) { }
     /** Returns the vertices of this actor's model */
     get vertices() {
         if (_globals__WEBPACK_IMPORTED_MODULE_0__["modelStore"][this.modelName] === undefined) {
             throw new Error(`Attempted to get vertices of non-loaded model '${this.modelName}'.`);
         }
-        return _globals__WEBPACK_IMPORTED_MODULE_0__["modelStore"][this.modelName].atlasTexcoordVertices(this.textureRange);
+        return _globals__WEBPACK_IMPORTED_MODULE_0__["modelStore"][this.modelName].getVerticesWithAtlasTexcoords(this.textureRange);
     }
+    /** Returns the indices of this actor's model */
     get indices() {
         if (_globals__WEBPACK_IMPORTED_MODULE_0__["modelStore"][this.modelName] === undefined) {
             throw new Error(`Attempted to get indices of non-loaded model '${this.modelName}'.`);
@@ -8427,7 +8496,7 @@ class StageActor {
         if (_globals__WEBPACK_IMPORTED_MODULE_0__["modelStore"][this.modelName] === undefined) {
             throw new Error(`Attempted to get vertices of non-loaded model '${this.modelName}'.`);
         }
-        return _globals__WEBPACK_IMPORTED_MODULE_0__["modelStore"][this.modelName].transformedVertices(this.transform.updateModelMatrix(), this.textureRange);
+        return _globals__WEBPACK_IMPORTED_MODULE_0__["modelStore"][this.modelName].getTransformedVertices(this.transform.updateModelMatrix(), this.textureRange);
     }
 }
 
@@ -8449,6 +8518,9 @@ __webpack_require__.r(__webpack_exports__);
 /// < reference file='../templates.ts' />
 
 
+/**
+ * Contains actors, setpieces, and a camera, and can update them each frame
+ */
 class Stage {
     /**
      * @param {string} name
@@ -8467,6 +8539,11 @@ class Stage {
         this.bakedVertices = [];
         this.bakedIndices = [];
     }
+    /**
+     * Updates every object in the
+     * @param deltaTime
+     * @param elapsedTime
+     */
     update(deltaTime, elapsedTime) {
         this.actors.forEach(actor => actor.update(deltaTime, elapsedTime));
         this.camera.update(deltaTime, elapsedTime);
@@ -8541,6 +8618,9 @@ class Transform {
         this.scale = scale;
         this.modelMatrix = gl_matrix__WEBPACK_IMPORTED_MODULE_0__["mat4"].create();
     }
+    /**
+     * Creates/updates the model matrix of this transform and returns it
+     */
     updateModelMatrix() {
         return gl_matrix__WEBPACK_IMPORTED_MODULE_0__["mat4"].fromRotationTranslationScale(this.modelMatrix, this.rotation, this.translation, this.scale);
     }
@@ -8566,6 +8646,12 @@ class Transform {
     rotatePitch(value) { gl_matrix__WEBPACK_IMPORTED_MODULE_0__["quat"].rotateX(this.rotation, this.rotation, value); }
     rotateYaw(value) { gl_matrix__WEBPACK_IMPORTED_MODULE_0__["quat"].rotateY(this.rotation, this.rotation, value); }
     rotateRoll(value) { gl_matrix__WEBPACK_IMPORTED_MODULE_0__["quat"].rotateZ(this.rotation, this.rotation, value); }
+    /**
+     * Creates a transform from position, rotation, and scale vectors
+     * @param position
+     * @param rotation
+     * @param scale
+     */
     static fromRawValues(position, rotation, scale) {
         if (position.length != 3) {
             throw new RangeError(`argument 'translation' not 3 elements long!`);
@@ -8579,6 +8665,10 @@ class Transform {
         return new Transform(gl_matrix__WEBPACK_IMPORTED_MODULE_0__["vec3"].fromValues(position[0], position[1], position[2]), gl_matrix__WEBPACK_IMPORTED_MODULE_0__["quat"].fromEuler(gl_matrix__WEBPACK_IMPORTED_MODULE_0__["quat"].create(), rotation[0], rotation[1], rotation[2]), gl_matrix__WEBPACK_IMPORTED_MODULE_0__["vec3"].fromValues(scale[0], scale[1], scale[2]));
     }
 }
+/**
+ * A specialized transform that handles rotation differently
+ * to make an FPS control scheme easier
+ */
 class FPSCameraTransform extends Transform {
     constructor(translation = gl_matrix__WEBPACK_IMPORTED_MODULE_0__["vec3"].create(), rotation = gl_matrix__WEBPACK_IMPORTED_MODULE_0__["vec2"].create()) {
         super(translation, gl_matrix__WEBPACK_IMPORTED_MODULE_0__["quat"].create(), gl_matrix__WEBPACK_IMPORTED_MODULE_0__["vec3"].fromValues(1, 1, 1));

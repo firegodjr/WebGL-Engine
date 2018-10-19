@@ -24,6 +24,7 @@ function getConfiguredActor(actorParams: ObjectTemplate)
 	const template = actorStore[actorParams.actorID];
 	const actor = new StageActor(template.name, template.modelName, template.textureRange);
 	actor.transform = Transform.fromRawValues(actorParams.position, actorParams.rotation, actorParams.scale)
+	//actor.update = new Function("deltaTime", "elapsedTime", template.script);
 
 	return actor;
 }
@@ -115,33 +116,42 @@ async function loadTextureAtlas(urls: string[]): Promise<TextureAtlas>
 	const offsets: OffsetDictionary = {};
 	let currentPower = 1;
 	/** @type {ImageBitmap} */
+
+	// Create the canvas that will draw the atlas
 	const canvas = document.createElement('canvas');
+	// Hide the canvas so the user can't see it
 	canvas.style.display = "none";
-	// TODO canvas.style.display = 'none';
+	// Add the canvas to the page
 	document.body.appendChild(canvas);
 
+	// Load every image we're going to atlas
 	const loadedImgs: HTMLImageElement[] = await Promise.all(urls.map((url) => loadedImageElement(url)));
 
+	// Sort all the images by size
 	loadedImgs.sort(sortImageSizes);
 
+	// Sum of all pixels we'll draw
 	let pixelSum = 0;
 	loadedImgs.forEach((img) => { pixelSum += img.naturalWidth * img.naturalHeight; });
 
-	// Find the optimal power of 2 to use
+	// Find the optimal power of 2 to use for the initial canvas
 	while (2 ** currentPower < Math.sqrt(pixelSum))
 	{
 		++currentPower;
 	}
 
+	// Sets the canvas to the size we determined
 	canvas.width = 2 ** currentPower;
 	canvas.height = canvas.width;
 	const ctx = canvas.getContext('2d');
 
 	if (ctx === null)
-		throw new TypeError('WebGL 2D context cannot be null!');
+		throw new TypeError('Canvas context cannot be null!');
 
+	// Generate the atlas
 	tileImageSquare(canvas, ctx, offsets, 0, 0, loadedImgs[0].naturalWidth, loadedImgs, { ref: 0 });
 
+	// Get the offsets for each texture
 	const indexedOffsets: TextureAtlas['offsets'] = new Array(urls.length);
 	urls.forEach((url, ind) => {
 		indexedOffsets[ind] = offsets[url];
@@ -164,7 +174,7 @@ export async function buildStage(index: number): Promise<Stage>
 	// Get the manifest for the stage we're trying to load
 	const stageManifest = stageStore[index];
 	//const stage_name = stageManifest.name;
-	const stage_name = 'lmao';
+	const stage_name = stageManifest.name;
 
 	// Asynchronously load all actors needed for the stage
 	// eslint-disable-next-line prefer-arrow-callback
@@ -172,7 +182,11 @@ export async function buildStage(index: number): Promise<Stage>
 		async function preloadActor(url, ind, arr) 
 		{
 			const actorTempl = await safeFetch<SerializedActor>(`content/${url}`, true);
-			actorStore.push(actorTempl);
+			if(actorTempl.script != undefined)
+			{
+				actorTempl.script = await safeFetch<string>(`content/actors/${actorTempl.script}`, false);
+			}
+			actorStore[ind] = actorTempl;
 		}
 	));
 

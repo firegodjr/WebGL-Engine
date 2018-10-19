@@ -1,4 +1,5 @@
 {
+	"name": "lel",
 	"preload": [
 		"actors/cubeActor.json",
 		"actors/boxActor.json"

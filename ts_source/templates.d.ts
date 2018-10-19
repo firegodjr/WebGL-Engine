@@ -13,6 +13,7 @@ export interface ActorTemplate extends ObjectTemplate {
 	actorID: 0
 }
 export interface StageTemplate {
+	name: string;
 	/** A list of relative URIs to actors/resources to preload */
 	preload: string[];
 	setpieces: SetpieceTemplate[];

@@ -2,6 +2,5 @@
 	"name": "boxActor",
 	"modelName": "Cube",
 	"texture": "box.png",
-	"textureRange": [0, 0, 1, 1],
-	"script": "cubeActor.js"
+	"textureRange": [0, 0, 1, 1]
 }

@@ -4,7 +4,7 @@ import { modelStore } from './globals'
 import OBJModel from './stage_content/objmodel'
 
 export async function safeFetch(filepath: string): Promise<string>;
-export async function safeFetch<T = object>(filepath: string, asJson: true): Promise<T>;
+export async function safeFetch<T = object>(filepath: string, asJson: boolean): Promise<T>;
 
 /**
  * Retrives a file from the web server. Rejects on non-Response.ok, and returns a promise to the body.
