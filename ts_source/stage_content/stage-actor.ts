@@ -9,14 +9,14 @@ import Stage from './stage';
 export default class StageActor
 {
 	public readonly name: string;
-	public readonly modelName: string;
+	public readonly modelNames: string[];
 	public transform: Transform;
 	public textureRange: [number, number, number, number];
 
-	constructor(name: string, modelName: string, textureRange?: StageActor['textureRange'])
+	constructor(name: string, modelNames: string[], textureRange?: StageActor['textureRange'])
 	{
 		this.name = name;
-		this.modelName = modelName;
+		this.modelNames = modelNames;
 		this.transform = new Transform();
 		this.textureRange = textureRange || [0, 0, 1, 1]
 	}
@@ -49,21 +49,21 @@ export default class StageActor
 	/** Returns the vertices of this actor's model */
 	get vertices()
 	{
-		if (modelStore[this.modelName] === undefined)
+		if (modelStore[this.modelNames[0]] === undefined) //TODO: allow multiple model loading, but correctly
 		{
-			throw new Error(`Attempted to get vertices of non-loaded model '${this.modelName}'.`);
+			throw new Error(`Attempted to get vertices of non-loaded model '${this.modelNames}'.`);
 		}
-		return modelStore[this.modelName].getVerticesWithAtlasTexcoords(this.textureRange);
+		return modelStore[this.modelNames[0]].getVerticesWithAtlasTexcoords(this.textureRange);
 	}
 
 	/** Returns the indices of this actor's model */
 	get indices()
 	{
-		if (modelStore[this.modelName] === undefined)
+		if (modelStore[this.modelNames[0]] === undefined)
 		{
-			throw new Error(`Attempted to get indices of non-loaded model '${this.modelName}'.`);
+			throw new Error(`Attempted to get indices of non-loaded model '${this.modelNames}'.`);
 		}
-		return modelStore[this.modelName].indices;
+		return modelStore[this.modelNames[0]].indices;
 	}
 
 	/**
@@ -71,11 +71,11 @@ export default class StageActor
 	 */
 	transformedVertices()
 	{
-		if (modelStore[this.modelName] === undefined)
+		if (modelStore[this.modelNames[0]] === undefined)
 		{
-			throw new Error(`Attempted to get vertices of non-loaded model '${this.modelName}'.`);
+			throw new Error(`Attempted to get vertices of non-loaded model '${this.modelNames}'.`);
 		}
-		return modelStore[this.modelName].getTransformedVertices(this.transform.updateModelMatrix(), this.textureRange);
+		return modelStore[this.modelNames[0]].getTransformedVertices(this.transform.updateModelMatrix(), this.textureRange);
 	}
 	
 	/* unused

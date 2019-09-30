@@ -1,0 +1,6 @@
+{
+	"name": "weirdActor",
+	"modelNames": ["Barrel.000_Cube.000"],
+	"texture": "DirtGravel_normal.jpg",
+	"textureRange": [0, 0, 1, 1]
+}

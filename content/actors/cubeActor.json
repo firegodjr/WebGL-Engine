@@ -1,7 +1,7 @@
 {
 	"name": "cubeActor",
 	"modelNames": ["Cube"],
-	"texture": "firefox.png",
+	"texture": "normal_mapping_normal_map.png",
 	"textureRange": [0, 0, 1, 1],
 	"script": "cubeActor.js"
 }

@@ -22,7 +22,7 @@ export interface TextureAtlas {
 function getConfiguredActor(actorParams: ObjectTemplate)
 {
 	const template = actorStore[actorParams.actorID];
-	const actor = new StageActor(template.name, template.modelName, template.textureRange);
+	const actor = new StageActor(template.name, template.modelNames, template.textureRange);
 	actor.transform = Transform.fromRawValues(actorParams.position, actorParams.rotation, actorParams.scale)
 	//actor.update = new Function("deltaTime", "elapsedTime", template.script);
 
@@ -209,7 +209,7 @@ export async function buildStage(index: number): Promise<Stage>
 	// Instantiate the stage
 	const stage = new Stage(stage_name, stage_setpieces, stage_actors, stage_textureAtlas)
 	
-	// Bake the setpieces into a single horrible object
+	// Bake the setpieces into a single object
 	stage.bakeSetpiece();
 
 	return stage;
@@ -231,7 +231,7 @@ export async function loadContent(): Promise<Stage>
 				const manif = await safeFetch<StageTemplate>(`content/${stage.url}`, true);
 				stageStore.push(manif);
 			})),
-			...(['models/barrel_ornate.obj', 'models/cube.obj'
+			...(['models/barrel_ornate.obj', 'models/cube.obj', 'models/sphere.obj'
 			].map(async function loadObjs(modelPath)
 			{
 				const modelText = await safeFetch(modelPath);

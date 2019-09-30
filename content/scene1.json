@@ -1,25 +1,26 @@
 {
 	"name": "lel",
 	"preload": [
-		"actors/cubeActor.json",
-		"actors/boxActor.json"
+		"actors/sphereActor.json",
+		"actors/boxActor.json",
+		"actors/weirdActor.json"
 	],
 	"setpieces": [
-		{
-			"name": "floor",
-			"actorID": 1,
-			"position": [2,-4,-9],
-			"rotation": [0,0,0],
-			"scale": [50,1,50]
-		}
 	],
 	"actors": [
 		{
-			"name": "cubeActor",
+			"name": "sphereActor",
 			"actorID": 0,
-			"position": [0,-2,-5],
+			"position": [-3,0,-7],
 			"rotation": [0,0,0],
 			"scale": [1,1,1]
+		},
+		{
+			"name": "weirdActor",
+			"actorID": 2,
+			"position": [2,-1,-7],
+			"rotation": [0,0,0],
+			"scale": [0.4,0.4,0.4]
 		}
 	]
 }

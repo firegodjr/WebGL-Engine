@@ -26,7 +26,7 @@ export interface ManifestTemplate {
 // Can't think of a better name for this >:
 export interface SerializedActor {
 	name: string;
-	modelName: string;
+	modelNames: string[];
 	texture: string;
 	textureRange: [number, number, number, number];
 	script: string;
