@@ -1,6 +1,6 @@
 {
 	"name": "boxActor",
-	"modelName": "Cube",
+	"modelNames": ["Cube"],
 	"texture": "box.png",
 	"textureRange": [0, 0, 1, 1],
 	"script": "cubeActor.js"

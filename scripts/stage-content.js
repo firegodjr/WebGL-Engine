@@ -70,12 +70,12 @@ class StageActor
 	}
 	/**
 	 * @param {string} name
-	 * @param {string} modelName
+	 * @param {string} modelNames
 	 */
-	constructor(name = '', modelName = DEFAULT_MODEL_NAME)
+	constructor(name = '', modelNames = [DEFAULT_MODEL_NAME])
 	{
 		this.name = name;
-		this.modelName = modelName;
+		this.modelNames = modelNames;
 		this.transform = new Transform();
 		this.textureRange = [1, 1, 0, 0];
 	}
@@ -89,24 +89,28 @@ class StageActor
 
 	onDestroy(deltaTime, elapsedTime) { }
 
-	/** Returns the vertices of this actor's model */
+	/** Returns the vertices of this actor's models */
 	get vertices()
 	{
-		if (modelStore[this.modelName] === undefined)
-		{
-			throw new Error(`Attempted to get vertices of non-loaded model '${this.modelName}'.`);
-		}
-		return modelStore[this.modelName].atlasTexcoordVertices(this.textureRange);
+		const vertices = [];
+		this.modelNames.forEach((modelName) => {
+			if (modelStore[modelName] === undefined)
+			{
+				throw new Error(`Attempted to get vertices of non-loaded model '${this.modelNames}'.`);
+			}
+			vertices.push(...modelStore[modelName].atlasTexcoordVertices(this.textureRange)); 
+		})
+		return vertices;
 	}
 
 	get indices()
 	{
-		if (modelStore[this.modelName] === undefined)
+		if (modelStore[this.modelNames] === undefined)
 		{
-			console.error(`Attempted to get indices of non-loaded model '${this.modelName}'.`);
+			console.error(`Attempted to get indices of non-loaded model '${this.modelNames}'.`);
 			return [];
 		}
-		return modelStore[this.modelName].indices;
+		return modelStore[this.modelNames].indices;
 	}
 
 	/**
@@ -114,11 +118,15 @@ class StageActor
 	 */
 	transformedVertices()
 	{
-		if (modelStore[this.modelName] === undefined)
-		{
-			throw new Error(`Attempted to get vertices of non-loaded model '${this.modelName}'.`);
-		}
-		return modelStore[this.modelName].transformedVertices(this.transform.initModelMatrix(), this.textureRange);
+		const vertices = [];
+		this.modelNames.forEach((modelName) => {
+			if (modelStore[modelName] === undefined)
+			{
+				throw new Error(`Attempted to get vertices of non-loaded model '${this.modelNames}'.`);
+			}
+			vertices.push(...modelStore[this.modelNames].transformedVertices(this.transform.initModelMatrix(), this.textureRange)); 
+		})
+		return vertices;
 	}
 }
 

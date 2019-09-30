@@ -27,7 +27,7 @@ async function safeFetch(filepath, asJson = false)
 function getConfiguredActor(actorParams)
 {
 	const template = actorStore[actorParams.actorID];
-	const actor = new StageActor(template.name, template.modelName);
+	const actor = new StageActor(template.name, template.modelNames);
 	actor.transform.translation = vec3.fromValues(...actorParams.position);
 	[actor.transform.rotationX,	actor.transform.rotationY, actor.transform.rotationZ] = actorParams.rotation;
 	actor.transform.scale = vec3.fromValues(...actorParams.scale);
@@ -205,6 +205,7 @@ async function buildStage(index)
  */
 async function loadContent(callback)
 {
+	modelStore["default"] = new OBJModel("default", [], [], [], []);
 	try
 	{
 		const MANIFEST_PATH = "content/manifest.json";
