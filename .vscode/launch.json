@@ -10,7 +10,8 @@
             "name": "Launch Chrome with Debugging",
             "url": "http://localhost:5500",
             "webRoot": "${workspaceFolder}",
-            "showAsyncStacks": true
-        }
+			"showAsyncStacks": true,
+			"preLaunchTask": "(webpack) bundle"
+		}
     ]
 }
