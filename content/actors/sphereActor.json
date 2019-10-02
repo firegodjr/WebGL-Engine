@@ -1,6 +1,6 @@
 {
 	"name": "sphereActor",
-	"modelNames": ["Sphere"],
+	"modelNames": ["Sphere_UVSphere"],
 	"texture": "DirtGravel_normal.jpg",
-	"textureRange": [0, 0, 1, 1]
+	"textureRange": [0, 0, 1, 1] 
 }

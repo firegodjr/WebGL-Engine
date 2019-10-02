@@ -7944,7 +7944,7 @@ function loadContent() {
                         _globals__WEBPACK_IMPORTED_MODULE_0__["stageStore"].push(manif);
                     });
                 })),
-                ...(['models/barrel_ornate.obj', 'models/cube.obj', 'models/sphere.obj'
+                ...(['models/barrel_ornate.obj', 'models/cube.obj', 'models/sphere.obj', 'models/uvsphere.obj'
                 ].map(function loadObjs(modelPath) {
                     return __awaiter(this, void 0, void 0, function* () {
                         const modelText = yield Object(_utils__WEBPACK_IMPORTED_MODULE_1__["safeFetch"])(modelPath);
@@ -8653,6 +8653,12 @@ class OBJModel {
                         }
                         break;
                     }
+                    case 's': {
+                        break;
+                    }
+                    case 'usemtl': {
+                        break;
+                    }
                     default: {
                         console.warn(`[.obj parse] ${filename}:${i}: unknown element token '${tokens[0]}'`);
                         break;
@@ -8822,7 +8828,8 @@ class StageActor {
     onDestroy(deltaTime, elapsedTime) { }
     /** Returns the vertices of this actor's model */
     get vertices() {
-        if (_globals__WEBPACK_IMPORTED_MODULE_0__["modelStore"][this.modelNames[0]] === undefined) {
+        if (_globals__WEBPACK_IMPORTED_MODULE_0__["modelStore"][this.modelNames[0]] === undefined) //TODO: allow multiple model loading, but correctly
+         {
             throw new Error(`Attempted to get vertices of non-loaded model '${this.modelNames}'.`);
         }
         return _globals__WEBPACK_IMPORTED_MODULE_0__["modelStore"][this.modelNames[0]].getVerticesWithAtlasTexcoords(this.textureRange);

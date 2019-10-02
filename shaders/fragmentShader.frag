@@ -12,11 +12,10 @@ void main()
     highp vec3 ambientLight = vec3(0.5, 0.5, 0.5);
     highp vec3 directionalLightColor = vec3(1, 1, 1);
     highp vec4 directionalVector = vec4(0.85, 0.8, 0.75, 0);
-    highp vec3 directionalVec3 = directionalVector.xyz;
+    highp vec3 directionalVec3 = normalize(directionalVector.xyz);
     
     highp float directional = max(dot(vNormal.xyz * texelColor.rgb, directionalVec3), 0.0);
-    highp float threshold = 3.0;
-    highp float steps = 5.0;
+    highp float steps = 4.0;
 
-    gl_FragColor = vec4((ambientLight + floor(directionalLightColor * directional * threshold) / steps), texelColor.a);
+    gl_FragColor = vec4((ambientLight + floor(directionalLightColor * directional * steps) / steps), texelColor.a);
 }

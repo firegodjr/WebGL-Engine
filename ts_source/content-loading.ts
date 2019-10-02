@@ -231,7 +231,7 @@ export async function loadContent(): Promise<Stage>
 				const manif = await safeFetch<StageTemplate>(`content/${stage.url}`, true);
 				stageStore.push(manif);
 			})),
-			...(['models/barrel_ornate.obj', 'models/cube.obj', 'models/sphere.obj'
+			...(['models/barrel_ornate.obj', 'models/cube.obj', 'models/sphere.obj', 'models/uvsphere.obj'
 			].map(async function loadObjs(modelPath)
 			{
 				const modelText = await safeFetch(modelPath);

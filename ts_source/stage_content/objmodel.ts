@@ -216,6 +216,14 @@ export default class OBJModel
 						}
 						break;
 					}
+					case 's': {
+
+						break;
+					}
+					case 'usemtl': {
+						
+						break;
+					}
 					default: {
 						console.warn(`[.obj parse] ${filename}:${i}: unknown element token '${tokens[0]}'`);
 						break;
