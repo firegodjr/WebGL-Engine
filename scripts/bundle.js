@@ -7821,50 +7821,59 @@ function getImagePixelRGBA(imageData: ImageData, x: number, y: number): number[]
  */
 function loadTextureAtlas(urls) {
     return __awaiter(this, void 0, void 0, function* () {
-        function tileImageSquare(canvas, ctx, offsets, xOffset, yOffset, currSize, images, index) {
+        function tileImageSquare(canvas, normalCanvas, offsets, xOffset, yOffset, currSize, images, normalImages, index) {
             let xProgress = 0;
             let yProgress = 0;
-            for (let j = 0; j < 4; ++j, ++index.ref) {
-                if (index.ref < images.length) {
-                    if (images[index.ref].naturalWidth === currSize) {
-                        ctx.drawImage(images[index.ref], xOffset + xProgress, yOffset + yProgress);
-                        offsets[images[index.ref].src.split('/').reverse()[0]] = [
-                            xOffset / canvas.width,
-                            yOffset / canvas.height,
-                            (xOffset + currSize) / canvas.width,
-                            (yOffset + currSize) / canvas.height
-                        ];
-                        xProgress += currSize;
-                        if (xProgress >= currSize * 2) {
-                            xProgress = 0;
-                            yProgress += currSize;
+            let ctx = canvas.getContext("2d");
+            let nctx = normalCanvas.getContext("2d");
+            if (ctx && nctx)
+                for (let j = 0; j < 4; ++j, ++index.ref) {
+                    if (index.ref < images.length) {
+                        if (images[index.ref].naturalWidth === currSize) {
+                            ctx.drawImage(images[index.ref], xOffset + xProgress, yOffset + yProgress);
+                            nctx.drawImage(normalImages[index.ref], xOffset + xProgress, yOffset + yProgress);
+                            offsets[images[index.ref].src.split('/').reverse()[0]] = [
+                                xOffset / canvas.width,
+                                yOffset / canvas.height,
+                                (xOffset + currSize) / canvas.width,
+                                (yOffset + currSize) / canvas.height
+                            ];
+                            xProgress += currSize;
+                            if (xProgress >= currSize * 2) {
+                                xProgress = 0;
+                                yProgress += currSize;
+                            }
+                        }
+                        else // if images[i].naturalWidth != currSize
+                         {
+                            tileImageSquare(canvas, normalCanvas, offsets, xOffset + xProgress, yOffset + yProgress, currSize / 2, images, normalImages, index);
                         }
                     }
-                    else // if images[i].naturalWidth != currSize
-                     {
-                        tileImageSquare(canvas, ctx, offsets, xOffset + xProgress, yOffset + yProgress, currSize / 2, images, index);
-                    }
+                    else
+                        return; // if i >= images.length
                 }
-                else
-                    return; // if i >= images.length
-            }
         }
         const offsets = {};
         let currentPower = 1;
         /** @type {ImageBitmap} */
         // Create the canvas that will draw the atlas
         const canvas = document.createElement('canvas');
+        const normalCanvas = document.createElement('canvas');
         // Hide the canvas so the user can't see it
         canvas.style.display = "none";
+        normalCanvas.style.display = "none";
         // Add the canvas to the page
         document.body.appendChild(canvas);
+        document.body.appendChild(normalCanvas);
         // Load every image we're going to atlas
-        const loadedImgs = yield Promise.all(urls.map((url) => loadedImageElement(url)));
+        const diffuseImgs = yield Promise.all(urls.map((url) => loadedImageElement(url)));
+        const normalImgs = yield Promise.all(urls.map((url) => loadedImageElement("normal." + url)));
         // Sort all the images by size
-        loadedImgs.sort(sortImageSizes);
+        diffuseImgs.sort(sortImageSizes);
+        normalImgs.sort(sortImageSizes);
         // Sum of all pixels we'll draw
         let pixelSum = 0;
-        loadedImgs.forEach((img) => { pixelSum += img.naturalWidth * img.naturalHeight; });
+        diffuseImgs.forEach((img) => { pixelSum += img.naturalWidth * img.naturalHeight; });
         // Find the optimal power of 2 to use for the initial canvas
         while (Math.pow(2, currentPower) < Math.sqrt(pixelSum)) {
             ++currentPower;
@@ -7872,18 +7881,21 @@ function loadTextureAtlas(urls) {
         // Sets the canvas to the size we determined
         canvas.width = Math.pow(2, currentPower);
         canvas.height = canvas.width;
+        normalCanvas.width = normalCanvas.height = canvas.width;
         const ctx = canvas.getContext('2d');
-        if (ctx === null)
+        const nctx = normalCanvas.getContext("2d");
+        if (ctx === null || nctx === null)
             throw new TypeError('Canvas context cannot be null!');
         // Generate the atlas
-        tileImageSquare(canvas, ctx, offsets, 0, 0, loadedImgs[0].naturalWidth, loadedImgs, { ref: 0 });
+        tileImageSquare(canvas, normalCanvas, offsets, 0, 0, diffuseImgs[0].naturalWidth, diffuseImgs, normalImgs, { ref: 0 });
         // Get the offsets for each texture
         const indexedOffsets = new Array(urls.length);
         urls.forEach((url, ind) => {
             indexedOffsets[ind] = offsets[url];
         });
         return {
-            atlas: yield createImageBitmap(ctx.getImageData(0, 0, canvas.width, canvas.height)),
+            diffuseAtlas: yield createImageBitmap(ctx.getImageData(0, 0, canvas.width, canvas.height)),
+            normalAtlas: yield createImageBitmap(nctx.getImageData(0, 0, canvas.width, canvas.height)),
             offsets: indexedOffsets
         };
     });
@@ -8185,12 +8197,12 @@ function drawInterleavedBuffer(gl, programInfo, buffers, textures, modelViewMatr
     gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
     // Tell WebGL which indices to use to index the vertices
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
-    // Tell WebGL we want to affect texture unit 0
-    gl.activeTexture(gl.TEXTURE0);
-    // Bind the texture to texture unit 0
-    gl.bindTexture(gl.TEXTURE_2D, textures[0]);
-    // Tell the shader we bound the texture to texture unit 0
-    gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
+    gl.activeTexture(gl.TEXTURE0); // Tell WebGL we want to affect texture unit 0
+    gl.bindTexture(gl.TEXTURE_2D, textures[0]); // Bind the texture to texture unit 0
+    gl.uniform1i(programInfo.uniformLocations.diffuseTex, 0); // Tell the shader we bound the texture to texture unit 0
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, textures[1]);
+    gl.uniform1i(programInfo.uniformLocations.normalTex, 1);
     {
         const offset = 0;
         const type = gl.UNSIGNED_SHORT;
@@ -8202,9 +8214,9 @@ function drawInterleavedBuffer(gl, programInfo, buffers, textures, modelViewMatr
  * @param {WebGLRenderingContext} gl
  * @param {Stage} stage
  * @param {object} programInfo
- * @param {number} texture
+ * @param {number} textures
  */
-function drawStage(gl, stage, programInfo, texture) {
+function drawStage(gl, stage, programInfo, textures) {
     gl.clearColor(..._globals__WEBPACK_IMPORTED_MODULE_1__["CLEAR_COLOR"]);
     gl.clearDepth(1.0);
     gl.enable(gl.CULL_FACE);
@@ -8228,7 +8240,7 @@ function drawStage(gl, stage, programInfo, texture) {
     cameraTransform.updateModelMatrix();
     gl_matrix__WEBPACK_IMPORTED_MODULE_0__["mat4"].lookAt(viewMatrix, cameraTransform.translation, getLookVector(cameraTransform), gl_matrix__WEBPACK_IMPORTED_MODULE_0__["vec3"].fromValues(0, 1, 0));
     const stageBuffers = createBuffers(gl, stage.vertices, stage.indices);
-    drawInterleavedBuffer(gl, programInfo, stageBuffers, [texture], viewMatrix, projectionMatrix);
+    drawInterleavedBuffer(gl, programInfo, stageBuffers, textures, viewMatrix, projectionMatrix);
     stage.actors.forEach((actor) => {
         // Set the drawing position to the 'identity' point
         const modelViewMatrix = gl_matrix__WEBPACK_IMPORTED_MODULE_0__["mat4"].create();
@@ -8236,7 +8248,7 @@ function drawStage(gl, stage, programInfo, texture) {
         gl_matrix__WEBPACK_IMPORTED_MODULE_0__["mat4"].mul(modelViewMatrix, viewMatrix, actor.transform.updateModelMatrix());
         // Create buffers for vertex arrays
         const buffers = createBuffers(gl, actor.vertices, actor.indices);
-        drawInterleavedBuffer(gl, programInfo, buffers, [texture], modelViewMatrix, projectionMatrix);
+        drawInterleavedBuffer(gl, programInfo, buffers, textures, modelViewMatrix, projectionMatrix);
     });
 }
 // #region utilities
@@ -8321,7 +8333,10 @@ function main(firstStage) {
     Object(_shaders__WEBPACK_IMPORTED_MODULE_4__["initDefaultShaderProgram"])(gl)
         .then((prog) => {
         // const texture = loadTexture(gl, 'firefox.png');
-        let texture = Object(_utils__WEBPACK_IMPORTED_MODULE_2__["textureFromBitmap"])(gl, firstStage.textureAtlas.atlas);
+        let textures = [
+            Object(_utils__WEBPACK_IMPORTED_MODULE_2__["textureFromBitmap"])(gl, firstStage.textureAtlas.diffuseAtlas),
+            Object(_utils__WEBPACK_IMPORTED_MODULE_2__["textureFromBitmap"])(gl, firstStage.textureAtlas.normalAtlas)
+        ];
         const programInfo = Object(_shaders__WEBPACK_IMPORTED_MODULE_4__["getProgramInfo"])(gl, prog);
         attachInputListeners(gl);
         console.log('starting main loop...');
@@ -8334,7 +8349,7 @@ function main(firstStage) {
                 throw new Error(`CurrentStage somehow became null! The program cannot continue!`);
             }
             firstStage.update(deltaTime, timeSecs);
-            drawStage(gl, firstStage, programInfo, texture);
+            drawStage(gl, firstStage, programInfo, textures);
             requestAnimationFrame(render);
         };
         requestAnimationFrame(render);
@@ -8441,7 +8456,8 @@ function getProgramInfo(gl, shaderProgram) {
             projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
             modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
             normalMatrix: gl.getUniformLocation(shaderProgram, 'uNormalMatrix'),
-            uSampler: gl.getUniformLocation(shaderProgram, 'uSampler')
+            diffuseTex: gl.getUniformLocation(shaderProgram, 'diffuseTex'),
+            normalTex: gl.getUniformLocation(shaderProgram, 'normalTex')
         },
     };
 }

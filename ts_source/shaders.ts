@@ -12,7 +12,8 @@ export interface WebGLProgramInfo {
 		projectionMatrix: WebGLUniformLocation | null;
 		modelViewMatrix: WebGLUniformLocation | null;
 		normalMatrix: WebGLUniformLocation | null;
-		uSampler: WebGLUniformLocation | null;
+		diffuseTex: WebGLUniformLocation | null;
+		normalTex: WebGLUniformLocation | null;
 	}
 }
 
@@ -105,7 +106,8 @@ export function getProgramInfo(gl: WebGLRenderingContext, shaderProgram: WebGLPr
 			projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
 			modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
 			normalMatrix: gl.getUniformLocation(shaderProgram, 'uNormalMatrix'),
-			uSampler: gl.getUniformLocation(shaderProgram, 'uSampler')
+			diffuseTex: gl.getUniformLocation(shaderProgram, 'diffuseTex'),
+			normalTex: gl.getUniformLocation(shaderProgram, 'normalTex')
 		},
 	};
 }

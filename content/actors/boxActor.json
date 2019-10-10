@@ -1,6 +1,6 @@
 {
 	"name": "boxActor",
 	"modelNames": ["Cube"],
-	"texture": "bricc.png",
+	"texture": "gravel.jpg",
 	"textureRange": [0, 0, 1, 1]
 }

@@ -11,7 +11,8 @@ import Stage from './stage_content/stage'
 import StageActor from './stage_content/stage-actor';
 
 export interface TextureAtlas {
-	atlas: ImageBitmap;
+	diffuseAtlas: ImageBitmap;
+	normalAtlas: ImageBitmap;
 	offsets: [number, number, number, number][];
 }
 
@@ -77,11 +78,14 @@ async function loadTextureAtlas(urls: string[]): Promise<TextureAtlas>
 		[name: string]: [number, number, number, number];
 	}
 
-	function tileImageSquare(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, offsets: OffsetDictionary, xOffset: number, yOffset: number, currSize: number, images: HTMLImageElement[], index: { ref: number })
+	function tileImageSquare(canvas: HTMLCanvasElement, normalCanvas: HTMLCanvasElement, offsets: OffsetDictionary, xOffset: number, yOffset: number, currSize: number, images: HTMLImageElement[], normalImages: HTMLImageElement[], index: { ref: number })
 	{
 		let xProgress = 0;
 		let yProgress = 0;
+		let ctx = canvas.getContext("2d");
+		let nctx = normalCanvas.getContext("2d");
 
+		if(ctx && nctx)
 		for (let j = 0; j < 4; ++j, ++index.ref)
 		{
 			if (index.ref < images.length)
@@ -89,6 +93,8 @@ async function loadTextureAtlas(urls: string[]): Promise<TextureAtlas>
 				if (images[index.ref].naturalWidth === currSize)
 				{
 					ctx.drawImage(images[index.ref], xOffset + xProgress, yOffset + yProgress);
+					nctx.drawImage(normalImages[index.ref], xOffset + xProgress, yOffset + yProgress);
+
 					offsets[images[index.ref].src.split('/').reverse()[0]] = [
 						xOffset / canvas.width,
 						yOffset / canvas.height,
@@ -106,7 +112,7 @@ async function loadTextureAtlas(urls: string[]): Promise<TextureAtlas>
 				}
 				else // if images[i].naturalWidth != currSize
 				{
-					tileImageSquare(canvas, ctx, offsets, xOffset + xProgress, yOffset + yProgress, currSize / 2, images, index);
+					tileImageSquare(canvas, normalCanvas, offsets, xOffset + xProgress, yOffset + yProgress, currSize / 2, images, normalImages, index);
 				}
 			}
 			else return; // if i >= images.length
@@ -119,20 +125,25 @@ async function loadTextureAtlas(urls: string[]): Promise<TextureAtlas>
 
 	// Create the canvas that will draw the atlas
 	const canvas = document.createElement('canvas');
+	const normalCanvas = document.createElement('canvas');
 	// Hide the canvas so the user can't see it
 	canvas.style.display = "none";
+	normalCanvas.style.display = "none";
 	// Add the canvas to the page
 	document.body.appendChild(canvas);
+	document.body.appendChild(normalCanvas);
 
 	// Load every image we're going to atlas
-	const loadedImgs: HTMLImageElement[] = await Promise.all(urls.map((url) => loadedImageElement(url)));
+	const diffuseImgs: HTMLImageElement[] = await Promise.all(urls.map((url) => loadedImageElement(url)));
+	const normalImgs: HTMLImageElement[] = await Promise.all(urls.map((url) => loadedImageElement("normal." + url)));
 
 	// Sort all the images by size
-	loadedImgs.sort(sortImageSizes);
+	diffuseImgs.sort(sortImageSizes);
+	normalImgs.sort(sortImageSizes);
 
 	// Sum of all pixels we'll draw
 	let pixelSum = 0;
-	loadedImgs.forEach((img) => { pixelSum += img.naturalWidth * img.naturalHeight; });
+	diffuseImgs.forEach((img) => { pixelSum += img.naturalWidth * img.naturalHeight; });
 
 	// Find the optimal power of 2 to use for the initial canvas
 	while (2 ** currentPower < Math.sqrt(pixelSum))
@@ -143,13 +154,15 @@ async function loadTextureAtlas(urls: string[]): Promise<TextureAtlas>
 	// Sets the canvas to the size we determined
 	canvas.width = 2 ** currentPower;
 	canvas.height = canvas.width;
+	normalCanvas.width = normalCanvas.height = canvas.width;
 	const ctx = canvas.getContext('2d');
+	const nctx = normalCanvas.getContext("2d")
 
-	if (ctx === null)
+	if (ctx === null || nctx === null)
 		throw new TypeError('Canvas context cannot be null!');
 
 	// Generate the atlas
-	tileImageSquare(canvas, ctx, offsets, 0, 0, loadedImgs[0].naturalWidth, loadedImgs, { ref: 0 });
+	tileImageSquare(canvas, normalCanvas, offsets, 0, 0, diffuseImgs[0].naturalWidth, diffuseImgs, normalImgs, { ref: 0 });
 
 	// Get the offsets for each texture
 	const indexedOffsets: TextureAtlas['offsets'] = new Array(urls.length);
@@ -159,7 +172,8 @@ async function loadTextureAtlas(urls: string[]): Promise<TextureAtlas>
 
 
 	return {
-		atlas: await createImageBitmap(ctx.getImageData(0, 0, canvas.width, canvas.height)),
+		diffuseAtlas: await createImageBitmap(ctx.getImageData(0, 0, canvas.width, canvas.height)),
+		normalAtlas: await createImageBitmap(nctx.getImageData(0, 0, canvas.width, canvas.height)),
 		offsets: indexedOffsets
 	};
 }

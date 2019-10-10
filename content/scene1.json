@@ -2,7 +2,6 @@
 	"name": "lel",
 	"preload": [
 		"actors/sphereActor.json",
-		"actors/boxActor.json",
 		"actors/weirdActor.json"
 	],
 	"setpieces": [
@@ -17,7 +16,7 @@
 		},
 		{
 			"name": "weirdActor",
-			"actorID": 2,
+			"actorID": 1,
 			"position": [2,-1,-7],
 			"rotation": [0,0,0],
 			"scale": [0.4,0.4,0.4]

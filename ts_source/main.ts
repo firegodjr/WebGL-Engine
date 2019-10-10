@@ -88,14 +88,14 @@ function drawInterleavedBuffer(gl: WebGLRenderingContext, programInfo: WebGLProg
 	// Tell WebGL which indices to use to index the vertices
 	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
 
-	// Tell WebGL we want to affect texture unit 0
-	gl.activeTexture(gl.TEXTURE0);
+	
+	gl.activeTexture(gl.TEXTURE0);// Tell WebGL we want to affect texture unit 0
+	gl.bindTexture(gl.TEXTURE_2D, textures[0]);// Bind the texture to texture unit 0
+	gl.uniform1i(programInfo.uniformLocations.diffuseTex, 0);// Tell the shader we bound the texture to texture unit 0
 
-	// Bind the texture to texture unit 0
-	gl.bindTexture(gl.TEXTURE_2D, textures[0]);
-
-	// Tell the shader we bound the texture to texture unit 0
-	gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
+	gl.activeTexture(gl.TEXTURE1);
+	gl.bindTexture(gl.TEXTURE_2D, textures[1]);
+	gl.uniform1i(programInfo.uniformLocations.normalTex, 1);
 
 	{
 		const offset = 0;
@@ -109,9 +109,9 @@ function drawInterleavedBuffer(gl: WebGLRenderingContext, programInfo: WebGLProg
  * @param {WebGLRenderingContext} gl
  * @param {Stage} stage
  * @param {object} programInfo
- * @param {number} texture
+ * @param {number} textures
  */
-function drawStage(gl: WebGLRenderingContext, stage: Stage, programInfo: WebGLProgramInfo, texture: WebGLTexture): void
+function drawStage(gl: WebGLRenderingContext, stage: Stage, programInfo: WebGLProgramInfo, textures: WebGLTexture[]): void
 {
 	gl.clearColor(...CLEAR_COLOR);
 	gl.clearDepth(1.0);
@@ -141,7 +141,7 @@ function drawStage(gl: WebGLRenderingContext, stage: Stage, programInfo: WebGLPr
 	mat4.lookAt(viewMatrix, cameraTransform.translation, getLookVector(cameraTransform), vec3.fromValues(0, 1, 0));
 
 	const stageBuffers = createBuffers(gl, stage.vertices, stage.indices);
-	drawInterleavedBuffer(gl, programInfo, stageBuffers, [texture], viewMatrix, projectionMatrix);
+	drawInterleavedBuffer(gl, programInfo, stageBuffers, textures, viewMatrix, projectionMatrix);
 
 	stage.actors.forEach((actor) => {
 		// Set the drawing position to the 'identity' point
@@ -152,7 +152,7 @@ function drawStage(gl: WebGLRenderingContext, stage: Stage, programInfo: WebGLPr
 		// Create buffers for vertex arrays
 		const buffers = createBuffers(gl, actor.vertices, actor.indices);
 
-		drawInterleavedBuffer(gl, programInfo, buffers, [texture], modelViewMatrix, projectionMatrix);
+		drawInterleavedBuffer(gl, programInfo, buffers, textures, modelViewMatrix, projectionMatrix);
 	});
 }
 
@@ -261,7 +261,10 @@ function main(firstStage: Stage)
 	initDefaultShaderProgram(gl)
 		.then((prog) => {
 			// const texture = loadTexture(gl, 'firefox.png');
-			let texture = textureFromBitmap(gl, firstStage.textureAtlas.atlas);
+			let textures = [
+				textureFromBitmap(gl, firstStage.textureAtlas.diffuseAtlas),
+				textureFromBitmap(gl, firstStage.textureAtlas.normalAtlas)
+			]
 
 			const programInfo = getProgramInfo(gl, prog);
 
@@ -281,7 +284,7 @@ function main(firstStage: Stage)
 				}
 
 				firstStage.update(deltaTime, timeSecs);
-				drawStage(gl, firstStage, programInfo, texture);
+				drawStage(gl, firstStage, programInfo, textures);
 				requestAnimationFrame(render);
 			}
 
